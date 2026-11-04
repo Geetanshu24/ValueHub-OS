@@ -1,0 +1,1820 @@
+[
+ {
+  "key": "inv_date",
+  "label": "Invoice date",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "inv_client",
+  "label": "Invoice: buyer / client name",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "valuer_name",
+  "label": "Valuer name (for signature)",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "branch_name",
+  "label": "Bank branch",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "place",
+  "label": "Place",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "report_date",
+  "label": "Report date",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "report_ref",
+  "label": "Report reference",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "inspection_date",
+  "label": "Date of Inspection",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "title_deed",
+  "label": "Title deed no and Date",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "valuation_date",
+  "label": "Date of Valuation",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "purpose",
+  "label": "Purpose of Valuation",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "owner_details",
+  "label": "Name of Property Owner/s (Details of share of each owner in case of joint & Co-ownership)",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "person_met_name",
+  "label": "Person Meet at site (Owner/ representative)Name of PersonContact Number",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "bank_name",
+  "label": "Name of Bank/FI as applicable",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "developer",
+  "label": "Name of Developer of the Property( in case of developer built properties )",
+  "section": "I. Introduction",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "occupancy",
+  "label": "Whether occupied by the owner I tenant? If occupied by tenant, since how long?",
+  "section": "I. Introduction",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "plot_no",
+  "label": "Location of the property in the city (plot no., door no., T.S. no. / village, ward / taluka, mandal / district)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "municipal_ward",
+  "label": "Municipal Ward No.",
+  "section": "II. Physical characteristics of the asset",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "city",
+  "label": "City/Town",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_type",
+  "label": "Residential Area/Commercial/Industrial Area",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "class_high_middle_poor",
+  "label": "Classification of the Area High/Middle/Poor",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "class_urban_rural",
+  "label": "Metro/Urban/Semi Urban/Rural",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "corporation_limit",
+  "label": "Coming under Corporation limit/ Village Panchayat/ Municipality",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "postal_address",
+  "label": "Postal address of the property",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "landmark",
+  "label": "Postal address of the property: Land mark",
+  "section": "II. Physical characteristics of the asset",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "coordinates",
+  "label": "Latitude, Longitude and Coordinates of the site",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_site",
+  "label": "Area of the Plot/land (supported by a plan): Area:- (as per site)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_doc",
+  "label": "Area of the Plot/land (supported by a plan): Area:- (as per doc)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "layout_plan",
+  "label": "Layout plan of the area in which the property is located",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "surrounding_development",
+  "label": "Development of surrounding areas",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "road_abutting",
+  "label": "Details of Roads abutting the property",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "road_type",
+  "label": "Type of road in front",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "govt_enactments",
+  "label": "Whether covered under any State I Central Govt. enactments (e.g., Urban Land Ceiling Act) or notified under agency area I scheduled area I cantonment area",
+  "section": "II. Physical characteristics of the asset",
+  "default": "Not Known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "agri_conversion",
+  "label": "In case it is an agricultural land, any conversion tohouse site Plots is contemplated",
+  "section": "II. Physical characteristics of the asset",
+  "default": "Not Known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_north_actual",
+  "label": "Boundaries of the property: North (actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_north_deed",
+  "label": "Boundaries of the property: North (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_south_actual",
+  "label": "Boundaries of the property: South (actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_south_deed",
+  "label": "Boundaries of the property: South (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_east_actual",
+  "label": "Boundaries of the property: East (actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_east_deed",
+  "label": "Boundaries of the property: East (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_west_actual",
+  "label": "Boundaries of the property: West (actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_west_deed",
+  "label": "Boundaries of the property: West (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "extent_considered",
+  "label": "Extent of the site considered for valuation (least of 14 A  & 14B)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_north_actual",
+  "label": "Description of Dimensions properties: North (as per actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_north_deed",
+  "label": "Description of Dimensions properties: North (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_south_actual",
+  "label": "Description of Dimensions properties: South (as per actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_south_deed",
+  "label": "Description of Dimensions properties: South (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_east_actual",
+  "label": "Description of Dimensions properties: East (as per actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_east_deed",
+  "label": "Description of Dimensions properties: East (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_west_actual",
+  "label": "Description of Dimensions properties: West (as per actual)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_west_deed",
+  "label": "Description of Dimensions properties: West (as per deed)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "survey_no",
+  "label": "Survey no. if any",
+  "section": "II. Physical characteristics of the asset",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "building_type",
+  "label": "Type of Building (Residential/ Commercial/ Industrial)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "building_details",
+  "label": "Detailsofthebuilding/buildings and other improvements  in  terms  of  area,  height, , full details of specifications to be appended along with building plans and elevations",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "num_floors",
+  "label": "Number of floor",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "rooms",
+  "label": "Number of rooms & accommodation floor wise (column 1)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "–",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f51_3",
+  "label": "Number of rooms & accommodation floor wise (column 2)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "year_construction",
+  "label": "Year of construction & year of making",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "plinth_floorwise",
+  "label": "plinth area floor wise (column 1)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f53_3",
+  "label": "plinth area floor wise (column 2)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f53_4",
+  "label": "plinth area floor wise (column 3)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f53_5",
+  "label": "plinth area floor wise (column 4)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "alterations",
+  "label": "alterations/additional constructions with details (column 1)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f54_3",
+  "label": "alterations/additional constructions with details (column 2)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f54_4",
+  "label": "alterations/additional constructions with details (column 3)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f54_5",
+  "label": "alterations/additional constructions with details (column 4)",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "property_identification",
+  "label": "Identification of the property",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "areas_clarified",
+  "label": "Plinth area, Carpet area and Saleable area to bementioned separately and clarified",
+  "section": "II. Physical characteristics of the asset",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "physical_other",
+  "label": "Any other aspect.",
+  "section": "II. Physical characteristics of the asset",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_1",
+  "label": "Master plan provisions related to the property in terms of land use",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_2",
+  "label": "Date of issue and validity of layout of approved map /plan",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_3",
+  "label": "Approved map / plan issuing authority",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_4",
+  "label": "Whether genuineness or authenticity of approved map / Plan is Verified",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_5",
+  "label": "Any other comments by our empaneled valuers on authentic of approved plan",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_6",
+  "label": "Planning area/zone",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_7",
+  "label": "Development controls",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_8",
+  "label": "Zoning regulations",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_9",
+  "label": "FAR/FSI permitted and consumed",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_10",
+  "label": "Ground coverage",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_11",
+  "label": "Transferability of development rights if any, Buildingbye-law provisions as applicable to the property viz.set backs, height restrictions, etc.",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_12",
+  "label": "Comment on surrounding land uses and adjoining properties in terms of usage.",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_13",
+  "label": "Comment on unauthorized constructions if any",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_14",
+  "label": "Comment on demolition proceedings if any",
+  "section": "III. Town planning parameters",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_15",
+  "label": "Comment on compounding/ regularization proceedings",
+  "section": "III. Town planning parameters",
+  "default": "-do-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_16",
+  "label": "Comment on whether OC has been issued or not",
+  "section": "III. Town planning parameters",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tp_17",
+  "label": "Any other aspect",
+  "section": "III. Town planning parameters",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_1",
+  "label": "Ownership documents,",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_2",
+  "label": "Names of Owner/s(In case of Joint or Co-ownership, whether the shares are undivided or not?)",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "lg_3",
+  "label": "Commentondispute I issuesoflandlord with tenant I statutory body I any other agencies, if any in regard to immovable property.",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_4",
+  "label": "Comment on whether the IP is independentlyaccessible?",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_5",
+  "label": "Title verification,",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_6",
+  "label": "Details of leases if any,",
+  "section": "IV. Legal aspects",
+  "default": "Not known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_7",
+  "label": "Ordinary status of freehold or leasehold including restriction on transfer,",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_8",
+  "label": "Agreements of easements if any,",
+  "section": "IV. Legal aspects",
+  "default": "Not known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_9",
+  "label": "Notification for acquisition if any,",
+  "section": "IV. Legal aspects",
+  "default": "Not known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_10",
+  "label": "Notification for road widening if any,",
+  "section": "IV. Legal aspects",
+  "default": "Not known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_11",
+  "label": "Possibility of frequent flooding I sub-merging",
+  "section": "IV. Legal aspects",
+  "default": "Not Available",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f91",
+  "label": "Special remarks, if any, like threat of acquisition of land for public service purposes, road widening or applicability of CRZ provisions etc. (Distance from sea-coast I tidal level must be incorporated)",
+  "section": "IV. Legal aspects",
+  "default": "Not known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_13a",
+  "label": "Electricity meter details",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_13b",
+  "label": "Property tax Details",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_13c",
+  "label": "Water & Sewer tax",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_14",
+  "label": "Comment on transferability of the property ownership,",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_15",
+  "label": "Comment on existing mortgages/ charges/ encumbrances on the property if any",
+  "section": "IV. Legal aspects",
+  "default": "Not known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_16",
+  "label": "Comment on whether the owners of the property have issued any guarantee (personal/corporate) as the case may",
+  "section": "IV. Legal aspects",
+  "default": "Not known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_17",
+  "label": "Building plan sanction, illegal constructions if any done without plan sanction/violations.",
+  "section": "IV. Legal aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "lg_18",
+  "label": "Any other aspect",
+  "section": "IV. Legal aspects",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ec_1",
+  "label": "Details of ground rent payable,",
+  "section": "V. Economic aspects",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ec_2",
+  "label": "Details of monthly rents being received if any,",
+  "section": "V. Economic aspects",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ec_3",
+  "label": "Taxes and other outgoings,",
+  "section": "V. Economic aspects",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ec_4",
+  "label": "Property insurance,",
+  "section": "V. Economic aspects",
+  "default": "Not Known",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ec_5",
+  "label": "Monthly maintenance charges,",
+  "section": "V. Economic aspects",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ec_6",
+  "label": "Security charges, etc",
+  "section": "V. Economic aspects",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ec_7",
+  "label": "Any other aspect",
+  "section": "V. Economic aspects",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "socio",
+  "label": "Description of the location of property in terms of the social structure of the area, population, social stratification, regional origin, age groups, economic levels, location of slums / squatter settlements nearby, etc.",
+  "section": "VI. Socio-cultural aspects",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "fu_space",
+  "label": "Space allocation,",
+  "section": "VII. Functional and utilitarian aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "fu_storage",
+  "label": "Storage spaces,",
+  "section": "VII. Functional and utilitarian aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "fu_utility",
+  "label": "Utility of spaces provided within the building,",
+  "section": "VII. Functional and utilitarian aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "fu_other",
+  "label": "Any other aspect",
+  "section": "VII. Functional and utilitarian aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "in_water",
+  "label": "Description of aqua infrastructure availability in terms of",
+  "section": "VIII. Infrastructure availability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f118",
+  "label": "Description of the location of property in terms of the social structure of the area, population, social stratification, regional origin, age groups, economic levels, location of slums / squatter settlements nearby, etc.: Water supply",
+  "section": "VIII. Infrastructure availability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "in_sewer",
+  "label": "Sewerage/sanitation,",
+  "section": "VIII. Infrastructure availability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "in_storm",
+  "label": "Storm water drainage",
+  "section": "VIII. Infrastructure availability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "in_waste",
+  "label": "b) Description of other physical infrastructure facilities viz.Solid waste management,",
+  "section": "VIII. Infrastructure availability",
+  "default": "-do-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "in_roads",
+  "label": "Electricity, Roads & Public transportation connectivity,",
+  "section": "VIII. Infrastructure availability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "in_utilities",
+  "label": "Availability of other public utilities",
+  "section": "VIII. Infrastructure availability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "in_social",
+  "label": "c)Social infrastructure in terms of     Schools., Medical facilities, Recreation facilities in terms of parks and open spaces.",
+  "section": "VIII. Infrastructure availability",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "mk_location",
+  "label": "Locational tributes,",
+  "section": "IX. Marketability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mk_scarcity",
+  "label": "Description of the location of property in terms of the social structure of the area, population, social stratification, regional origin, age groups, economic levels, location of slums / squatter settlements nearby, etc.: Scarcity,",
+  "section": "IX. Marketability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mk_demand",
+  "label": "Demand and supply of the kind of subject property,",
+  "section": "IX. Marketability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mk_comparable",
+  "label": "Comparable sale prices in the locality.",
+  "section": "IX. Marketability",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_type",
+  "label": "Type of construction,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_materials",
+  "label": "Materials and technology used,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f135",
+  "label": "Class of construction",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_appearance",
+  "label": "Appearance (Goof/ /poor/ Excellent/ordinary)",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_interior",
+  "label": "Interior finishing",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_exterior",
+  "label": "Exterior finishing",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_electrical",
+  "label": "Electrical fitting",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_sanitary",
+  "label": "Sanitary fitting",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_4",
+  "label": "Maintenance issues",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_5",
+  "label": "Age of the building",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_6",
+  "label": "Total life of the building,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_7",
+  "label": "Extent of deterioration,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_8",
+  "label": "Structural safety",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_9",
+  "label": "Protection against natural disasters viz. earthquakes,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_10",
+  "label": "Visible damage in the building if any,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_11",
+  "label": "Common facilities viz., water pump, lights, security systems, etc.,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_12",
+  "label": "System of air-conditioning,",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "en_13",
+  "label": "Provision for firefighting, Copies of plans and elevations of the building to be included.",
+  "section": "X. Engineering and technology aspects",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ev_1",
+  "label": "Use of environment friendly building materials, green building techniques if any,",
+  "section": "XI. Environmental factors",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ev_2",
+  "label": "Provision for rain water harvesting,",
+  "section": "XI. Environmental factors",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ev_3",
+  "label": "Use of solar heating and lighting systems, etc.Presence of environmental pollution in the vicinity of the property in terms of industries, heavy traffic, etc.",
+  "section": "XI. Environmental factors",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ar_1",
+  "label": "Descriptive account on whether the building is modern, old fashioned, etc., plain looking or with decorative elements, heritage value if applicable, presence of landscape elements, etc.",
+  "section": "XII. Architectural and aesthetic quality",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ind_proximity",
+  "label": "Proximity to residential areasAvailability of public transport facilities",
+  "section": "XIII. Industrial property",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_name",
+  "label": "1 (dealer name and contact)",
+  "section": "XIV. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_size",
+  "label": "1 (size of property)",
+  "section": "XIV. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_range",
+  "label": "1 (range)",
+  "section": "XIV. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_location",
+  "label": "1 (location)",
+  "section": "XIV. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_circle_area",
+  "label": "Cost of Land as Per DLC/ Circle Rate (total area)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_circle_rate",
+  "label": "Cost of Land as Per DLC/ Circle Rate (market rate)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_circle_amount",
+  "label": "Cost of Land as Per DLC/ Circle Rate (total amount)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_circle_construction",
+  "label": "Cost of Construction as per Circle rate",
+  "section": "Valuation workings",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_market_area",
+  "label": "Cost of Land as Per Market Rate (total area)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_market_rate",
+  "label": "Cost of Land as Per Market Rate (market rate)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_market_amount",
+  "label": "Cost of Land as Per Market Rate (total amount)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_particulars",
+  "label": "1. (items)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_plinth",
+  "label": "1. (plinth area)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_height",
+  "label": "1. (roof height)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_age",
+  "label": "1. (age)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_rate",
+  "label": "1. (rate of construction)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_cost",
+  "label": "1. (construction cost)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_depreciation",
+  "label": "1. (depreciation)",
+  "section": "Valuation workings",
+  "default": "--",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_net",
+  "label": "1. (net value)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_total",
+  "label": "Cost of construction: total",
+  "section": "Valuation workings",
+  "default": "--",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tot_circle",
+  "label": "Total Value of Property as Per DLC/ Circle Rate",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tot_market",
+  "label": "Total Value of Property  in my opinion  as Per Market Rate (B+C)",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tot_realizable",
+  "label": "Realizable Value",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tot_distress",
+  "label": "Distress Value",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tot_insurance",
+  "label": "Insurance Value",
+  "section": "Valuation workings",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "od_purchase_date",
+  "label": "Date of purchase of immovable property",
+  "section": "The other details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "od_purchase_price",
+  "label": "Purchase Price of immovable property",
+  "section": "The other details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "od_book_value",
+  "label": "Book value of immovable property",
+  "section": "The other details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "od_realizable",
+  "label": "Realizable Value of immovable property",
+  "section": "The other details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "od_distress",
+  "label": "Distress Sale Value of immovable property",
+  "section": "The other details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "od_guideline",
+  "label": "Guideline Value (value as per Circle Rates),if applicable, in the area where Immovable property is situated.",
+  "section": "The other details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_1",
+  "label": "Background information of the asset being valued;",
+  "section": "Valuer details for the bank",
+  "default": "Details already mentioned in Description of the property above",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_2",
+  "label": "Purpose of valuation and appointing authority",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_3",
+  "label": "Identity of the valuer and any other experts involved in the valuation;",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_4",
+  "label": "Disclosure of valuer interest or conflict, if any;",
+  "section": "Valuer details for the bank",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_appointment",
+  "label": "Date of appointment",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_visit",
+  "label": "Valuation/visit date",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_report",
+  "label": "Date of report",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_6",
+  "label": "Inspections and/or investigations undertaken;",
+  "section": "Valuer details for the bank",
+  "default": "Data of the valuation report is as per site identification by the purchase/mortgagor during site visit\nContacted the local real estate agent, local person as well as browsed various real estate websites to arrive fair market value of the subject property under valuation",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_7",
+  "label": "Nature and sources of the information used or relied upon;",
+  "section": "Valuer details for the bank",
+  "default": "All the list of copy of documents as mentioned above to pursue the valuation\nInformation relied upon Personal enquiry/judgement & other sources such as brokers and surrounding persons",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_8",
+  "label": "Procedures adopted in carrying out the valuation and valuation standards followed;",
+  "section": "Valuer details for the bank",
+  "default": "Market Approach method used (Land and Building rate) and IVS adopted.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_9",
+  "label": "Restrictions on use of the report, if any;",
+  "section": "Valuer details for the bank",
+  "default": "This valuation report only meant for Punjab national bank, not use for legal/ court purpose & It cannot be used by any other Financial institute or for any other purpose.",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_10",
+  "label": "Major factors that were taken into account during the valuation;",
+  "section": "Valuer details for the bank",
+  "default": "Market value expressed here is the value of the property on the date of valuation \nReal-estate market is not a stable market. It is volatile market and subject to change due to external factors, such as riots , natural calamities , policy changes by the govt. authorities, stigma effects and various other factor    \nValue is an opinion and the opinion expressed by the valuer is not binding to the parties in transaction",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "inv_total",
+  "label": "Caveats, limitations and disclaimers to the extent they explain or elucidate the limitations faced by valuer, which shall not be for the purpose of limiting his responsibility for the valuation report.: Total",
+  "section": "Invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "branch_manager",
+  "label": "Name of Branch/credit Manager",
+  "section": "Invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "branch_contact",
+  "label": "Contact number",
+  "section": "Invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "branch_email",
+  "label": "Email Id of Branch",
+  "section": "Invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "market_opinion",
+  "label": "Valuer's opinion on the rate adopted (as per verbal & telephonic enquiry ...)",
+  "section": "XIV. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "inv_fee_valuation",
+  "label": "Invoice: fee (Rs.)",
+  "section": "Invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ }
+]

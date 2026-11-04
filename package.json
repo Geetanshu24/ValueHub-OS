@@ -1,0 +1,36 @@
+{
+  "name": "valuehub-os",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ValueHub Valuation Operating System: bank valuation workflow, evidence vault and accounts",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w packages/valuation-shared && concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run start:dev -w apps/valuation-api",
+    "dev:web": "npm run dev -w apps/valuation-web",
+    "build": "npm run build -w packages/valuation-shared && npm run build -w apps/valuation-web && npm run build -w apps/valuation-api",
+    "lint": "npm run lint -w apps/valuation-web && npm run lint -w apps/valuation-api",
+    "test": "npm run build -w packages/valuation-shared && npm test -w apps/valuation-api",
+    "test:e2e": "npm run test:e2e -w apps/valuation-api",
+    "db:generate": "npm run db:generate -w apps/valuation-api",
+    "db:migrate": "npm run db:migrate -w apps/valuation-api",
+    "db:deploy": "npm run db:deploy -w apps/valuation-api",
+    "db:seed": "npm run db:seed -w apps/valuation-api",
+    "verify:files": "npm run verify:files -w apps/valuation-api"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "allowScripts": {
+    "@prisma/client": true,
+    "@prisma/engines": true,
+    "prisma": true,
+    "fsevents": true
+  }
+}

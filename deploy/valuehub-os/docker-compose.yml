@@ -1,0 +1,42 @@
+# Local or small-site deployment. Copy .env.example to .env next to this file and fill it in.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: valuehub
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      POSTGRES_DB: valuehub_os
+    volumes: ["dbdata:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U valuehub"], interval: 5s, retries: 10 }
+
+  api:
+    build: { context: ../.., dockerfile: deploy/valuehub-os/Dockerfile.api }
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      DATABASE_URL: postgresql://valuehub:${DB_PASSWORD}@db:5432/valuehub_os
+      DIRECT_URL: postgresql://valuehub:${DB_PASSWORD}@db:5432/valuehub_os
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32+ chars)}
+      CORS_ORIGINS: ${WEB_URL:-http://localhost:8080}
+      WEB_URL: ${WEB_URL:-http://localhost:8080}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_BUCKET: ${SUPABASE_BUCKET:-valuehub-files}
+    volumes: ["files:/data/storage"]
+    ports: ["3100:3100"]
+
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/valuehub-os/Dockerfile.web
+      args: { VITE_API_URL: "${API_PUBLIC_URL:-http://localhost:3100/api/v1}" }
+    depends_on: [api]
+    ports: ["8080:80"]
+
+volumes:
+  dbdata:
+  files:

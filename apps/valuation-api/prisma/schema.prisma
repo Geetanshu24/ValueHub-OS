@@ -1,0 +1,852 @@
+// ValueHub Valuation Operating System — core data model.
+// Separate from apps/api (Valuer Connect): own database, own client.
+//
+// Principles from the blueprint:
+//  - Property is not the assignment: Property is the stable identity,
+//    Assignment/Inspection/Valuation/Report are per-engagement records.
+//  - Issued records are never overwritten: valuations and reports are
+//    versioned rows, not edited in place.
+//  - Extracted facts stay UNVERIFIED until a human reviews them.
+//  - Every row is owned by a Firm (tenant); queries always filter by firmId.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+// The app connects through DATABASE_URL (on Supabase, the pooled connection).
+// Migrations use DIRECT_URL, a direct connection, because they need session
+// features a transaction pooler does not give. On a plain Postgres, set both
+// to the same address.
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ───────────────────────── Enums ─────────────────────────
+// Keep in sync with packages/valuation-shared.
+
+enum UserRole {
+  FIRM_ADMIN
+  VALUER
+  INSPECTOR
+  REVIEWER
+  ACCOUNTS
+}
+
+enum PropertyClass {
+  FLAT
+  HOUSE
+  LAND
+  COMMERCIAL
+  INDUSTRIAL
+  MIXED_USE
+}
+
+enum AssignmentStatus {
+  INTAKE
+  DOCUMENTS
+  INSPECTION
+  VALUATION
+  QUALITY_REVIEW
+  APPROVED
+  SUBMITTED
+  REVISION
+  CLOSED
+  CANCELLED
+}
+
+enum IntakeSource {
+  WHATSAPP
+  EMAIL
+  MOBILE_APP
+  DASHBOARD
+  MANUAL
+}
+
+enum AssignmentPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DocumentType {
+  BANK_INSTRUCTION
+  SALE_DEED
+  APPROVED_PLAN
+  REVENUE_RECORD
+  TAX_RECEIPT
+  OCCUPATION_CERTIFICATE
+  SHAJRA_PLAN
+  WATER_BILL
+  MAGISTRATE_CERTIFICATE
+  PATWARI_REPORT
+  OTHER
+}
+
+enum VerificationState {
+  UNVERIFIED
+  VERIFIED
+  CORRECTED
+  UNKNOWN
+}
+
+enum OcrStatus {
+  NOT_RUN
+  DONE
+  NO_TEXT
+  FAILED
+}
+
+enum FieldSource {
+  MANUAL
+  OCR
+}
+
+enum InspectionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  SUBMITTED
+  REVIEWED
+}
+
+enum DiscrepancyStatus {
+  UNRESOLVED
+  RESOLVED
+  DISCLOSED
+  ESCALATED
+}
+
+enum VersionStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ISSUED
+  SUPERSEDED
+}
+
+// How a line item relates to the adopted base rate, so the same item is
+// never counted twice.
+enum LineItemTreatment {
+  INCLUDED_IN_BASE_RATE
+  SEPARATELY_VALUED
+  NOT_APPLICABLE
+  REQUIRES_REVIEW
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum SubmissionChannel {
+  EMAIL
+  PORTAL
+  COURIER
+  HAND_DELIVERY
+}
+
+// RECORDED: a person logged it. SENT: the mail server accepted it (not proof
+// of delivery). FAILED: the attempt errored.
+enum DeliveryStatus {
+  RECORDED
+  SENT
+  FAILED
+}
+
+enum QueryKind {
+  QUERY
+  REVISION_REQUEST
+}
+
+enum QueryStatus {
+  OPEN
+  RESPONDED
+  CLOSED
+}
+
+// ───────────────────────── Tenancy & people ─────────────────────────
+
+model Firm {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users           User[]
+  banks           Bank[]
+  branches        BankBranch[]
+  properties      Property[]
+  assignments     Assignment[]
+  documents       Document[]
+  extractedFields ExtractedField[]
+  inspections     Inspection[]
+  discrepancies   Discrepancy[]
+  comparables     MarketComparable[]
+  valuations      ValuationVersion[]
+  templates       ReportTemplate[]
+  reports         ReportVersion[]
+  submissions     Submission[]
+  invoices        Invoice[]
+  payments        Payment[]
+  queries         BankQuery[]
+  auditEvents     AuditEvent[]
+  idSequences     IdSequence[]
+  bankReportForms BankReportForm[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  firmId       String
+  email        String   @unique
+  fullName     String
+  role         UserRole
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  firm                Firm         @relation(fields: [firmId], references: [id])
+  assignmentsAsValuer Assignment[] @relation("AssignmentValuer")
+  inspections         Inspection[] @relation("InspectionInspector")
+
+  @@index([firmId])
+}
+
+// Per-firm counters behind VH-PROP-000184 / VH-ASG-2026-00921 / invoices.
+// Incremented atomically inside the creating transaction.
+model IdSequence {
+  firmId String
+  key    String
+  value  Int    @default(0)
+
+  firm Firm @relation(fields: [firmId], references: [id])
+
+  @@id([firmId, key])
+}
+
+// ───────────────────────── Clients ─────────────────────────
+
+model Bank {
+  id        String   @id @default(uuid())
+  firmId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  firm        Firm             @relation(fields: [firmId], references: [id])
+  branches    BankBranch[]
+  assignments Assignment[]
+  templates   ReportTemplate[]
+
+  @@unique([firmId, name])
+}
+
+model BankBranch {
+  id           String   @id @default(uuid())
+  firmId       String
+  bankId       String
+  name         String
+  city         String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  createdAt    DateTime @default(now())
+
+  firm        Firm         @relation(fields: [firmId], references: [id])
+  bank        Bank         @relation(fields: [bankId], references: [id])
+  assignments Assignment[]
+
+  @@unique([bankId, name])
+  @@index([firmId])
+}
+
+// ───────────────────────── Property identity ─────────────────────────
+// Stable across assignments. Holds identity only: never a value, a photo
+// from one visit, or an area adopted for one report.
+
+model Property {
+  id            String        @id @default(uuid())
+  firmId        String
+  code          String // VH-PROP-000184
+  propertyClass PropertyClass
+  addressLine   String
+  unitDetail    String? // unit / plot / floor
+  locality      String?
+  village       String?
+  tehsil        String?
+  district      String?
+  state         String?
+  pinCode       String?
+  latitude      Decimal?      @db.Decimal(9, 6)
+  longitude     Decimal?      @db.Decimal(9, 6)
+  khasraNumbers String[]      @default([])
+  boundaries    Json? // { north, south, east, west }
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  firm        Firm         @relation(fields: [firmId], references: [id])
+  assignments Assignment[]
+  documents   Document[]
+
+  @@unique([firmId, code])
+  @@index([firmId, district])
+  @@index([firmId, pinCode])
+}
+
+// ───────────────────────── Assignment ─────────────────────────
+
+model Assignment {
+  id               String             @id @default(uuid())
+  firmId           String
+  code             String // VH-ASG-2026-00921
+  bankId           String
+  branchId         String?
+  propertyId       String
+  purpose          String
+  scope            String?
+  valuationDate    DateTime           @db.Date
+  dueDate          DateTime           @db.Date
+  receivedAt       DateTime           @default(now())
+  intakeSource     IntakeSource       @default(DASHBOARD)
+  priority         AssignmentPriority @default(NORMAL)
+  borrowerName     String?
+  instructionDate  DateTime?          @db.Date
+  // The earlier assignment this one was started from. Nothing is copied
+  // silently; the link only records where the starting details came from.
+  reusedFromId     String?
+  fee              Decimal?           @db.Decimal(12, 2)
+  status           AssignmentStatus   @default(INTAKE)
+  assignedValuerId String
+  createdById      String
+  closedAt         DateTime?
+  retainUntil      DateTime?          @db.Date
+  legalHold        Boolean            @default(false)
+  legalHoldReason  String?
+  legalHoldAt      DateTime?
+  legalHoldById    String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  firm           Firm               @relation(fields: [firmId], references: [id])
+  bank           Bank               @relation(fields: [bankId], references: [id])
+  branch         BankBranch?        @relation(fields: [branchId], references: [id])
+  property       Property           @relation(fields: [propertyId], references: [id])
+  assignedValuer User               @relation("AssignmentValuer", fields: [assignedValuerId], references: [id])
+  reusedFrom     Assignment?        @relation("AssignmentReuse", fields: [reusedFromId], references: [id])
+  reusedBy       Assignment[]       @relation("AssignmentReuse")
+  documents      Document[]
+  inspections    Inspection[]
+  discrepancies  Discrepancy[]
+  comparables    MarketComparable[]
+  valuations     ValuationVersion[]
+  reports        ReportVersion[]
+  bankReportForms BankReportForm[]
+  submissions    Submission[]
+  invoices       Invoice[]
+  queries        BankQuery[]
+
+  @@unique([firmId, code])
+  @@index([firmId, status])
+  @@index([firmId, dueDate])
+  @@index([firmId, bankId])
+  @@index([propertyId])
+  @@index([assignedValuerId])
+}
+
+// ───────────────────────── Documents & evidence ─────────────────────────
+
+model Document {
+  id           String       @id @default(uuid())
+  firmId       String
+  propertyId   String
+  assignmentId String?
+  type         DocumentType
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  pageCount    Int?
+  storageKey   String // object-storage key of the untouched original
+  sha256       String // change-detection aid, not proof of authenticity
+  source       IntakeSource @default(DASHBOARD)
+  ocrStatus    OcrStatus    @default(NOT_RUN)
+  ocrText      String? // text read from the file; searchable, never treated as verified
+  ocrError     String?
+  ocrAt        DateTime?
+  uploadedById String
+  uploadedAt   DateTime     @default(now())
+
+  firm       Firm             @relation(fields: [firmId], references: [id])
+  property   Property         @relation(fields: [propertyId], references: [id])
+  assignment Assignment?      @relation(fields: [assignmentId], references: [id])
+  fields     ExtractedField[]
+
+  @@index([firmId, propertyId])
+  @@index([assignmentId])
+}
+
+// A fact read from a document. Starts UNVERIFIED; OCR output is a suggestion.
+model ExtractedField {
+  id             String            @id @default(uuid())
+  firmId         String
+  documentId     String
+  fieldKey       String // e.g. plot_area_sqm
+  extractedValue String
+  pageNumber     Int
+  confidence     Decimal?          @db.Decimal(4, 3)
+  source         FieldSource       @default(MANUAL)
+  state          VerificationState @default(UNVERIFIED)
+  verifiedValue  String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+
+  firm     Firm     @relation(fields: [firmId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@index([documentId])
+  @@index([firmId, state])
+}
+
+// ───────────────────────── Inspection ─────────────────────────
+
+model Inspection {
+  id           String           @id @default(uuid())
+  firmId       String
+  assignmentId String
+  inspectorId  String
+  visitedAt    DateTime
+  latitude     Decimal?         @db.Decimal(9, 6)
+  longitude    Decimal?         @db.Decimal(9, 6)
+  observations Json?
+  status       InspectionStatus @default(SCHEDULED)
+  createdAt    DateTime         @default(now())
+
+  firm         Firm                    @relation(fields: [firmId], references: [id])
+  assignment   Assignment              @relation(fields: [assignmentId], references: [id])
+  inspector    User                    @relation("InspectionInspector", fields: [inspectorId], references: [id])
+  measurements InspectionMeasurement[]
+  photos       InspectionPhoto[]
+
+  @@index([firmId, assignmentId])
+  @@index([inspectorId])
+}
+
+model InspectionMeasurement {
+  id           String  @id @default(uuid())
+  inspectionId String
+  label        String // e.g. "Plot", "Ground floor"
+  fieldKey     String? // the documented fact this measures, e.g. plot_area_sqm
+  areaSqm      Decimal @db.Decimal(12, 2)
+  method       String // how it was measured
+  note         String?
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id])
+
+  @@index([inspectionId])
+}
+
+model InspectionPhoto {
+  id               String    @id @default(uuid())
+  inspectionId     String
+  storageKey       String
+  mimeType         String
+  sha256           String
+  caption          String?
+  category         String? // front elevation, interior, boundary…
+  captionConfirmed Boolean   @default(false)
+  takenAt          DateTime?
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id])
+
+  @@index([inspectionId])
+}
+
+// Two sources disagree. Both values are kept; the system never picks one.
+model Discrepancy {
+  id             String            @id @default(uuid())
+  firmId         String
+  assignmentId   String
+  fieldKey       String // e.g. plot_area_sqm
+  description    String
+  valueA         String
+  sourceA        String
+  valueB         String
+  sourceB        String
+  material       Boolean           @default(true)
+  status         DiscrepancyStatus @default(UNRESOLVED)
+  resolutionNote String?
+  resolvedById   String?
+  resolvedAt     DateTime?
+  createdAt      DateTime          @default(now())
+
+  firm       Firm       @relation(fields: [firmId], references: [id])
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+
+  @@index([assignmentId, status])
+  @@index([firmId, status])
+}
+
+// ───────────────────────── Valuation ─────────────────────────
+
+model MarketComparable {
+  id            String   @id @default(uuid())
+  firmId        String
+  assignmentId  String
+  location      String
+  source        String
+  isTransaction Boolean // false = asking price
+  observedOn    DateTime @db.Date
+  areaBasis     String
+  ratePerSqm    Decimal  @db.Decimal(14, 2)
+  adjustments   Json?
+  verified      Boolean  @default(false)
+  relevanceNote String?
+  recordedById  String
+  createdAt     DateTime @default(now())
+
+  firm       Firm       @relation(fields: [firmId], references: [id])
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+
+  @@index([assignmentId])
+}
+
+// Append-only: a change creates versionNumber + 1, never edits an approved row.
+model ValuationVersion {
+  id                String        @id @default(uuid())
+  firmId            String
+  assignmentId      String
+  versionNumber     Int
+  status            VersionStatus @default(DRAFT)
+  method            String
+  engineVersion     String
+  areaBasis         String
+  adoptedAreaSqm    Decimal       @db.Decimal(12, 2)
+  adoptedAreaSource String // why this area was adopted over other records
+  inputs            Json // exact engine input, so the version can be recomputed
+  assumptions       String?
+  totalValue        Decimal       @db.Decimal(16, 2)
+  changeReason      String? // required from V2 onwards
+  createdById       String
+  approvedById      String?
+  approvedAt        DateTime?
+  createdAt         DateTime      @default(now())
+
+  firm       Firm                @relation(fields: [firmId], references: [id])
+  assignment Assignment          @relation(fields: [assignmentId], references: [id])
+  lineItems  ValuationLineItem[]
+  reports    ReportVersion[]
+
+  @@unique([assignmentId, versionNumber])
+  @@index([firmId])
+}
+
+model ValuationLineItem {
+  id                 String            @id @default(uuid())
+  valuationVersionId String
+  sortOrder          Int
+  component          String // Land, Ground floor, Lift ...
+  // Area lines: amount = quantity x rate. Percentage lines (depreciation,
+  // adjustments): unit is '%', rate is the base amount, amount = rate x quantity / 100.
+  quantity           Decimal           @db.Decimal(14, 2)
+  unit               String
+  rate               Decimal           @db.Decimal(14, 2)
+  amount             Decimal           @db.Decimal(16, 2)
+  treatment          LineItemTreatment @default(REQUIRES_REVIEW)
+  sourceNote         String? // comparable, observation or assumption relied on
+  overrideReason     String? // mandatory for any manual override
+
+  valuationVersion ValuationVersion @relation(fields: [valuationVersionId], references: [id])
+
+  @@index([valuationVersionId])
+}
+
+// ───────────────────────── Reports ─────────────────────────
+
+model ReportTemplate {
+  id            String         @id @default(uuid())
+  firmId        String
+  bankId        String?
+  name          String
+  propertyClass PropertyClass?
+  version       Int
+  effectiveFrom DateTime       @db.Date
+  fieldMap      Json // the template spec: sections, fields -> source paths, limitations, annexures
+  isActive      Boolean        @default(true)
+  createdById   String
+  createdAt     DateTime       @default(now())
+
+  firm    Firm            @relation(fields: [firmId], references: [id])
+  bank    Bank?           @relation(fields: [bankId], references: [id])
+  reports ReportVersion[]
+
+  @@unique([firmId, name, version])
+  @@index([firmId, bankId, propertyClass])
+}
+
+model ReportVersion {
+  id                 String        @id @default(uuid())
+  firmId             String
+  assignmentId       String
+  valuationVersionId String
+  templateId         String
+  versionNumber      Int
+  status             VersionStatus @default(DRAFT)
+  // Everything the PDF is drawn from, frozen at creation, so a report can be
+  // regenerated later without reading live data.
+  snapshot           Json
+  qc                 Json
+  storageKey         String // current PDF: draft, then the final issued copy
+  sha256             String
+  createdById        String
+  changeReason       String? // required when a version follows an issued one
+  reviewerId         String?
+  approvedAt         DateTime?
+  issuedById         String?
+  issuedAt           DateTime?
+  createdAt          DateTime      @default(now())
+
+  firm             Firm             @relation(fields: [firmId], references: [id])
+  assignment       Assignment       @relation(fields: [assignmentId], references: [id])
+  valuationVersion ValuationVersion @relation(fields: [valuationVersionId], references: [id])
+  template         ReportTemplate   @relation(fields: [templateId], references: [id])
+  submissions      Submission[]
+
+  @@unique([assignmentId, versionNumber])
+  @@index([firmId])
+}
+
+model Submission {
+  id              String            @id @default(uuid())
+  firmId          String
+  assignmentId    String
+  reportVersionId String
+  channel         SubmissionChannel
+  recipient       String
+  sentAt          DateTime
+  sentById        String
+  deliveryStatus  DeliveryStatus    @default(RECORDED)
+  deliveryError   String?
+  messageId       String?
+  acknowledgedAt  DateTime?
+  note            String?
+
+  firm          Firm          @relation(fields: [firmId], references: [id])
+  assignment    Assignment    @relation(fields: [assignmentId], references: [id])
+  reportVersion ReportVersion @relation(fields: [reportVersionId], references: [id])
+
+  @@index([assignmentId])
+}
+
+// ───────────────────────── Accounts ─────────────────────────
+
+model Invoice {
+  id           String        @id @default(uuid())
+  firmId       String
+  assignmentId String
+  code         String // VH-INV-0041
+  amount       Decimal       @db.Decimal(12, 2)
+  issuedOn     DateTime      @db.Date
+  dueOn        DateTime      @db.Date
+  status       InvoiceStatus @default(DRAFT)
+  sentAt       DateTime?
+  cancelReason String?
+  notes        String?
+  createdById  String
+  createdAt    DateTime      @default(now())
+
+  firm       Firm              @relation(fields: [firmId], references: [id])
+  assignment Assignment        @relation(fields: [assignmentId], references: [id])
+  payments   Payment[]
+  followUps  InvoiceFollowUp[]
+
+  @@unique([firmId, code])
+  @@index([firmId, status, dueOn])
+  @@index([assignmentId])
+}
+
+// Payments are never edited or deleted; a mistake is voided with a reason.
+model Payment {
+  id           String    @id @default(uuid())
+  firmId       String
+  invoiceId    String
+  amount       Decimal   @db.Decimal(12, 2)
+  receivedOn   DateTime  @db.Date
+  reference    String?
+  recordedById String
+  voidedAt     DateTime?
+  voidedById   String?
+  voidReason   String?
+  createdAt    DateTime  @default(now())
+
+  firm    Firm    @relation(fields: [firmId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+}
+
+enum FollowUpChannel {
+  EMAIL
+  CALL
+  VISIT
+  OTHER
+}
+
+// History of chasing an invoice: who contacted whom, how, and what was agreed.
+model InvoiceFollowUp {
+  id           String          @id @default(uuid())
+  firmId       String
+  invoiceId    String
+  channel      FollowUpChannel
+  note         String
+  contactedAt  DateTime        @default(now())
+  nextActionOn DateTime?       @db.Date
+  sentTo       String?
+  delivery     DeliveryStatus?
+  createdById  String
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+}
+
+model BankQuery {
+  id               String          @id @default(uuid())
+  firmId           String
+  assignmentId     String
+  code             String // Q-2026-00003
+  kind             QueryKind       @default(QUERY)
+  question         String
+  receivedAt       DateTime        @default(now())
+  dueAt            DateTime
+  status           QueryStatus     @default(OPEN)
+  // What the response relied on: [{ type, id, note }]
+  evidence         Json?
+  response         String?
+  respondedAt      DateTime?
+  respondedById    String?
+  responseSentTo   String?
+  responseDelivery DeliveryStatus?
+  escalatedAt      DateTime?
+  escalatedById    String?
+  escalationNote   String?
+  createdById      String
+  createdAt        DateTime        @default(now())
+
+  firm       Firm       @relation(fields: [firmId], references: [id])
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+
+  @@unique([firmId, code])
+  @@index([firmId, status, dueAt])
+  @@index([assignmentId])
+}
+
+// ───────────────────────── Firm configuration
+
+// One row per firm. retentionYears is deliberately empty until an admin sets
+// it from the applicable law and bank agreements; the system supplies no default.
+model FirmSettings {
+  firmId         String   @id
+  retentionYears Int?
+  updatedById    String
+  updatedAt      DateTime @updatedAt
+}
+
+// Default fee for new assignments. The most specific effective rule wins:
+// bank + class, then bank, then class, then neither.
+model FeeRule {
+  id            String         @id @default(uuid())
+  firmId        String
+  bankId        String?
+  propertyClass PropertyClass?
+  amount        Decimal        @db.Decimal(12, 2)
+  effectiveFrom DateTime       @db.Date
+  createdById   String
+  createdAt     DateTime       @default(now())
+
+  @@index([firmId, bankId, propertyClass])
+}
+
+// Firm-defined sign-off items a reviewer must tick before a report is approved.
+model ChecklistItem {
+  id            String         @id @default(uuid())
+  firmId        String
+  label         String
+  propertyClass PropertyClass? // null = applies to every class
+  isActive      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+
+  responses ReportChecklistResponse[]
+
+  @@index([firmId, isActive])
+}
+
+model ReportChecklistResponse {
+  id              String   @id @default(uuid())
+  firmId          String
+  reportVersionId String
+  itemId          String
+  label           String // copied, so the record survives later edits to the item
+  checked         Boolean
+  note            String?
+  checkedById     String
+  checkedAt       DateTime @default(now())
+
+  item ChecklistItem @relation(fields: [itemId], references: [id])
+
+  @@unique([reportVersionId, itemId])
+}
+
+// One-time password reset links. Only a hash of the token is stored.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ───────────────────────── Audit ─────────────────────────
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  firmId     String
+  actorId    String?
+  entityType String
+  entityId   String
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  firm Firm @relation(fields: [firmId], references: [id])
+
+  @@index([firmId, entityType, entityId])
+  @@index([firmId, createdAt])
+}
+
+// The valuer's answers for a bank's own report format (e.g. Bank of India), keyed by the
+// format's field keys. Separate from versioned reports: this is the working copy.
+model BankReportForm {
+  id           String   @id @default(uuid())
+  firmId       String
+  assignmentId String
+  format       String
+  values       Json
+  updatedById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  firm       Firm       @relation(fields: [firmId], references: [id])
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+
+  @@unique([assignmentId, format])
+  @@index([firmId])
+}

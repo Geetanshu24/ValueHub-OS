@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# env (the example files stay)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs and OS
+*.log
+.DS_Store
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# generated Prisma client
+apps/valuation-api/src/generated/
+
+# local uploads and OCR language data
+apps/valuation-api/storage/
+*.traineddata

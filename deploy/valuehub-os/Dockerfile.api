@@ -1,0 +1,22 @@
+# Build from the project root:  docker build -f deploy/valuehub-os/Dockerfile.api -t valuehub-api .
+FROM node:24-slim AS build
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY packages packages
+COPY apps/valuation-api apps/valuation-api
+COPY apps/valuation-web/package.json apps/valuation-web/package.json
+# Only the valuation workspaces are needed; --ignore-scripts then generate explicitly.
+RUN npm ci --ignore-scripts \
+ && npm run build --workspace packages/valuation-shared \
+ && npm run db:generate -w apps/valuation-api \
+ && npm run build --workspace apps/valuation-api
+
+FROM node:24-slim
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+WORKDIR /repo
+ENV NODE_ENV=production STORAGE_DIR=/data/storage PORT=3100
+COPY --from=build /repo /repo
+VOLUME ["/data/storage"]
+EXPOSE 3100
+# Apply migrations, then start. Secrets (DATABASE_URL, JWT_SECRET, SMTP_*) come from the environment.
+CMD ["sh", "-c", "cd apps/valuation-api && npx prisma migrate deploy && node dist/main.js"]

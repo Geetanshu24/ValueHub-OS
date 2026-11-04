@@ -1,0 +1,56 @@
+# Render Blueprint for the ValueHub OS API (the NestJS service).
+# The database and the file storage live on Supabase; the web app lives on Vercel.
+# Step by step: docs/deploy-supabase-render-vercel.md
+services:
+  - type: web
+    name: valuehub-api
+    runtime: node
+    # "starter" is a small paid instance that stays awake. "free" works for a trial
+    # but sleeps when idle, so the first request after a pause takes about a minute.
+    plan: starter
+    region: singapore
+    healthCheckPath: /api/health
+    buildCommand: >-
+      npm ci --include=dev &&
+      npm run build -w packages/valuation-shared &&
+      npm run db:generate -w apps/valuation-api &&
+      npm run build -w apps/valuation-api
+    # Apply any new database migrations, then start the server.
+    startCommand: cd apps/valuation-api && npx prisma migrate deploy && node dist/main.js
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      # Supabase connection strings (see the guide). Pooled for the app, direct for migrations.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: valuehub-files
+      # The Vercel address of the web app, e.g. https://valuehub.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      - key: WEB_URL
+        sync: false
+      # Email is optional. Leave SMTP_HOST empty to keep the Email channel off.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Text recognition downloads its language data here on first use.
+      - key: OCR_CACHE_DIR
+        value: /tmp/ocr

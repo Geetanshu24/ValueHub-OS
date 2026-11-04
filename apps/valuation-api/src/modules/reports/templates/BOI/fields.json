@@ -1,0 +1,1802 @@
+[
+ {
+  "key": "inv_date",
+  "label": "Invoice date",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "inv_client",
+  "label": "Invoice: client name",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "valuer_name",
+  "label": "Valuer name (for signature)",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "branch_name",
+  "label": "Bank branch",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "place",
+  "label": "Place",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "report_date",
+  "label": "Report date",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "report_ref",
+  "label": "Report reference",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "purpose",
+  "label": "1. Purpose for which the valuation is made",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "inspection_date",
+  "label": "2. a) Date of inspection",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "valuation_date",
+  "label": "b) Date on which the valuation is made",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "documents_list",
+  "label": "3. List of documents produced for perusal:",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "owner_details",
+  "label": "4. Name of the owner(s) and his / their address (es) with Phone no. (details of share of each owner in case of joint ownership)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "owner_note",
+  "label": "Ownership note (e.g. single / joint ownership)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "property_description",
+  "label": "5. Brief description of the property (IncludingLeasehold/freehold etc.)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "landmark",
+  "label": "5. Brief description of the property (IncludingLeasehold/freehold etc.): Landmark",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "property_identification",
+  "label": "Identification of the property (PID / plate / enquiry details)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "plot_no",
+  "label": "a) Plot No. / Survey No.",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "door_no",
+  "label": "b) Door No.",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "village",
+  "label": "c) T. S. No. / Village",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "ward",
+  "label": "d) Ward / Taluka",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "district",
+  "label": "e) Mandal / District",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "postal_address",
+  "label": "7. Postal address of the property",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "city",
+  "label": "8. City / Town",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_residential",
+  "label": "Residential Area",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_commercial",
+  "label": "Commercial Area",
+  "section": "I. General",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_industrial",
+  "label": "Industrial Area",
+  "section": "I. General",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "class_high_middle_poor",
+  "label": "i) High / Middle / Poor",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "class_urban_rural",
+  "label": "ii) Urban / Semi Urban / Rural",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "corporation_limit",
+  "label": "10 Coming under Corporation limit / VillagePanchayat / Municipality",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "govt_enactments",
+  "label": "11 Whether covered under any State / Central Govt. enactments (e.g. Urban Land Ceiling Act) or notified under agency area / scheduled area / cantonment area",
+  "section": "I. General",
+  "default": "Not in our knowledge",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "agri_conversion",
+  "label": "12 In case it is an agricultural land, any conversion to house site plots is contemplated",
+  "section": "I. General",
+  "default": "-do-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_north_deed",
+  "label": "Boundaries of the property: North (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_north_actual",
+  "label": "Boundaries of the property: North (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_south_deed",
+  "label": "Boundaries of the property: South (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_south_actual",
+  "label": "Boundaries of the property: South (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_east_deed",
+  "label": "Boundaries of the property: East (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_east_actual",
+  "label": "Boundaries of the property: East (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_west_deed",
+  "label": "Boundaries of the property: West (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_west_actual",
+  "label": "Boundaries of the property: West (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_north_deed",
+  "label": "Dimensions of the site: North (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_north_actual",
+  "label": "Dimensions of the site: North (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_south_deed",
+  "label": "Dimensions of the site: South (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_south_actual",
+  "label": "Dimensions of the site: South (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_east_deed",
+  "label": "Dimensions of the site: East (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_east_actual",
+  "label": "Dimensions of the site: East (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_west_deed",
+  "label": "Dimensions of the site: West (as per deed)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dimension_west_actual",
+  "label": "Dimensions of the site: West (as per actual)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "coordinates",
+  "label": "14.2 Latitude, Longitude and Coordinates of the site",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "extent_site",
+  "label": "15 Extent of the site",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "extent_considered",
+  "label": "16 Extent of the site considered for valuation (least of 14 A & 14 B)",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "occupancy",
+  "label": "17 Whether occupied by the owner / tenant? If occupied by tenant, since how long? Rent received per month.",
+  "section": "I. General",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_locality",
+  "label": "1. Classification of locality",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_development",
+  "label": "2. Development of surrounding areas",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_flooding",
+  "label": "3. Possibility of frequent flooding / sub-merging",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_amenities",
+  "label": "4. Feasibility to the Civic amenities like school, hospital, bus stop, market etc.",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_level",
+  "label": "5. Level of land with topographical conditions",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_shape",
+  "label": "6. Shape of land",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_use",
+  "label": "7. Type of use to which it can be put",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_restriction",
+  "label": "8. Any usage restriction",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_approved_layout",
+  "label": "9. Is plot in town planning approved layout?",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_corner",
+  "label": "10 Corner plot or intermittent plot?",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_road",
+  "label": "11 Road facilities",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_road_type",
+  "label": "12 Type of road available at present",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_road_width",
+  "label": "13 Width of road – is it below 20 ft. or more than 20 ft",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_landlocked",
+  "label": "14 Is it a land – locked land?",
+  "section": "II. Characteristics of the site",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_water",
+  "label": "15 Water potentiality",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_sewer",
+  "label": "16 Underground sewerage system",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_power",
+  "label": "17 Is power supply available at the site?",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_advantage",
+  "label": "18 Advantage of the site",
+  "section": "II. Characteristics of the site",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "site_remarks",
+  "label": "19 Special remarks, if any, like threat of acquisition of land for public service purposes, road widening or applicability of CRZ provisions etc. (Distance from sea-coast / tidal level must be incorporated)",
+  "section": "II. Characteristics of the site",
+  "default": "N.A.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "land_part_a_extent",
+  "label": "Part – A (Valuation of land)",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "land_size",
+  "label": "1. Size of plot",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f66",
+  "label": "19 Special remarks, if any, like threat of acquisition of land for public service purposes, road widening or applicability of CRZ provisions etc. (Distance from sea-coast / tidal level must be incorporated): North & South",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "f67",
+  "label": "19 Special remarks, if any, like threat of acquisition of land for public service purposes, road widening or applicability of CRZ provisions etc. (Distance from sea-coast / tidal level must be incorporated): East & West",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "land_extent",
+  "label": "2. Total extent of the plot",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "land_market_rate",
+  "label": "3. Prevailing market rate (Along with details/reference of at least two latest deals/transactions with respect to adjacent properties in the areas via 99acre)",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "land_guideline_rate",
+  "label": "4. Guideline rate obtained  from   the Registrar’s Office (an evidence thereof to be enclosed)",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "land_adopted_rate",
+  "label": "5. Assessed / adopted rate of valuation",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "land_value",
+  "label": "6. Estimated value of land",
+  "section": "Part A: Valuation of land",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_type",
+  "label": "a) Type of Building (Residential / Commercial / Industrial)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "b_construction",
+  "label": "b) Type of construction (Load bearing / RCC/ Steel Framed)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_year",
+  "label": "c) Year of construction",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_age",
+  "label": "a Age of building",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_future_life",
+  "label": "b Future lift of building",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_floors",
+  "label": "d) Number of floors and height of each floorincluding basement, if any (column 1)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f83_5",
+  "label": "d) Number of floors and height of each floorincluding basement, if any (column 2)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_plinth",
+  "label": "e) Plinth area floor-wise",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_condition_exterior",
+  "label": "i) Exterior – Excellent, Good, Normal, Poor",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_condition_interior",
+  "label": "ii) Inferior - Excellent, Good, Normal, Poor",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_map_validity",
+  "label": "Date of issue and validity of layout of approved map / plan",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_map_authority",
+  "label": "Approved map / plan issuing authority",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_map_verified",
+  "label": "Whether genuineness or authenticity of approved map / plan is verified",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "b_map_comments",
+  "label": "Any other comments by our empaneled values on authentic of approved plan",
+  "section": "Part B: Valuation of building",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_col1",
+  "label": "Specification table: floor / column titles (column 1)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_col2",
+  "label": "Specification table: floor / column titles (column 2)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_foundation",
+  "label": "Specification: Foundation",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_basement",
+  "label": "Specification: Basement (column 1)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f94_3",
+  "label": "Specification: Basement (column 2)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_superstructure",
+  "label": "Specification: Superstructure (column 1)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f95_3",
+  "label": "Specification: Superstructure (column 2)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_joinery",
+  "label": "Specification: Joinery / Doors & Windows (please furnish details about size of frames, shutters, glazing, fitting etc. and specify the species of timber)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_rcc",
+  "label": "Specification: RCC works",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_plastering",
+  "label": "Specification: Plastering",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_flooring",
+  "label": "Specification: Flooring, Skirting, dadoing",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_special",
+  "label": "Specification: Special finish as marble, granite, wooden paneling, grills, (column 1)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f100_3",
+  "label": "Specification: Special finish as marble, granite, wooden paneling, grills, (column 2)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_roofing",
+  "label": "Specification: Roofing including weather proof course (column 1)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f101_3",
+  "label": "Specification: Roofing including weather proof course (column 2)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "spec_drainage",
+  "label": "Specification: Drainage (column 1)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f102_3",
+  "label": "Specification: Drainage (column 2)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "cw_present",
+  "label": "Compound wall: 1. Compound wall",
+  "section": "Part B: Valuation of building",
+  "default": "Not Present",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "cw_height",
+  "label": "Roofing including weather proof course: Height",
+  "section": "Part B: Valuation of building",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "cw_length",
+  "label": "Roofing including weather proof course: Length",
+  "section": "Part B: Valuation of building",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "cw_type",
+  "label": "Compound wall: Type of construction",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "el_wiring",
+  "label": "Electrical installation: Type of wiring",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "el_fittings",
+  "label": "Electrical installation: Class of fittings (superior / good/ ordinary / poor)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "el_lights",
+  "label": "Electrical installation: Number of light points",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "el_fans",
+  "label": "Electrical installation: Fan points",
+  "section": "Part B: Valuation of building",
+  "default": "–",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "el_plugs",
+  "label": "Electrical installation: Spare plug points",
+  "section": "Part B: Valuation of building",
+  "default": "–",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "el_other",
+  "label": "Electrical installation: Any other item",
+  "section": "Part B: Valuation of building",
+  "default": "–",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "pl_wc",
+  "label": "Plumbing installation: No. of water closets and their type",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "pl_basins",
+  "label": "Plumbing installation: No. of wash basins",
+  "section": "Part B: Valuation of building",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "pl_urinals",
+  "label": "Plumbing installation: No. of urinals",
+  "section": "Part B: Valuation of building",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "pl_tubs",
+  "label": "Plumbing installation: No. of bath tubs",
+  "section": "Part B: Valuation of building",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "pl_taps",
+  "label": "Plumbing installation: Water meter, taps, etc.",
+  "section": "Part B: Valuation of building",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "pl_other",
+  "label": "Plumbing installation: Any other fixtures",
+  "section": "Part B: Valuation of building",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_particulars",
+  "label": "1 (particulars)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_plinth",
+  "label": "1 (plinth area)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_height",
+  "label": "1 (roof height)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_age",
+  "label": "1 (age)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_rate",
+  "label": "1 (rate per sq ft)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_cost",
+  "label": "1 (construction cost)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_depreciation",
+  "label": "1 (depreciation)",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "vl_total",
+  "label": "Details of valuation: total",
+  "section": "Part B: Valuation of building",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "c_portico",
+  "label": "1. Portico",
+  "section": "Part C: Extra items",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "c_door",
+  "label": "2. Ornamental front door",
+  "section": "Part C: Extra items",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "c_sitout",
+  "label": "3. Sit out/ Verandah with steel grills",
+  "section": "Part C: Extra items",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "c_tank",
+  "label": "4. Overhead water tank",
+  "section": "Part C: Extra items",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "c_gates",
+  "label": "5. Extra steel/ collapsible gates",
+  "section": "Part C: Extra items",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "c_total",
+  "label": "5. Extra steel/ collapsible gates: Total",
+  "section": "Part C: Extra items",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_wardrobes",
+  "label": "1. Wardrobes",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_tiles",
+  "label": "2. Glazed tiles",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_sinks",
+  "label": "3. Extra sinks and bath tub",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_flooring",
+  "label": "4. Marble / ceramic tiles flooring",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_interior",
+  "label": "5. Interior decorations",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_elevation",
+  "label": "6. Architectural elevation works",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_paneling",
+  "label": "7. Paneling works",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_aluminum",
+  "label": "8. Aluminum works",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_rails",
+  "label": "9. Aluminum hand rails",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "d_ceiling",
+  "label": "10. False ceiling",
+  "section": "Part D: Amenities",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "e_toilet",
+  "label": "1. Separate toilet room",
+  "section": "Part E: Miscellaneous",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "e_lumber",
+  "label": "2. Separate lumber room",
+  "section": "Part E: Miscellaneous",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "e_sump",
+  "label": "3. Separate water tank/ sump",
+  "section": "Part E: Miscellaneous",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "e_trees",
+  "label": "4. Trees, gardening",
+  "section": "Part E: Miscellaneous",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "e_total",
+  "label": "3. Separate water tank/ sump: Total",
+  "section": "Part E: Miscellaneous",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f_water",
+  "label": "1. Water supply arrangements",
+  "section": "Part F: Services",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f_drainage",
+  "label": "2. Drainage arrangements",
+  "section": "Part F: Services",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f_wall",
+  "label": "3. Compound wall",
+  "section": "Part F: Services",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f_cb",
+  "label": "4. C. B. deposits, fittings etc.",
+  "section": "Part F: Services",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f_pavement",
+  "label": "5. Pavement",
+  "section": "Part F: Services",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "f_total",
+  "label": "4. C. B. deposits, fittings etc.: Total",
+  "section": "Part F: Services",
+  "default": "Nil",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_name",
+  "label": "1 (dealer name and contact)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_size",
+  "label": "1 (size of property)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_range",
+  "label": "1 (range)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker1_location",
+  "label": "1 (location)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker2_name",
+  "label": "2 (dealer name and contact)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker2_size",
+  "label": "2 (size of property)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker2_range",
+  "label": "2 (range)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker2_location",
+  "label": "2 (location)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker3_name",
+  "label": "3 (dealer name and contact)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker3_size",
+  "label": "3 (size of property)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker3_range",
+  "label": "3 (range)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "broker3_location",
+  "label": "3 (location)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_land",
+  "label": "Part- A Land value",
+  "section": "Total abstract of the property",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_building",
+  "label": "Part- B Building value",
+  "section": "Total abstract of the property",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_extra",
+  "label": "Part- C Extra Items i.e Installation of Lift",
+  "section": "Total abstract of the property",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_amenities",
+  "label": "Part- D Amenities+ Boundary wall with gate& Grill",
+  "section": "Total abstract of the property",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_misc",
+  "label": "Part- E Miscellaneous",
+  "section": "Total abstract of the property",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_services",
+  "label": "Part- F Services",
+  "section": "Total abstract of the property",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_total",
+  "label": "Total fair market",
+  "section": "Total abstract of the property",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_realizable",
+  "label": "Realizable Value",
+  "section": "Total abstract of the property",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_distress",
+  "label": "Distress Value",
+  "section": "Total abstract of the property",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_circle",
+  "label": "Part- E Miscellaneous: Circle Rate",
+  "section": "Total abstract of the property",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "abs_insurance",
+  "label": "Insurance Value",
+  "section": "Total abstract of the property",
+  "default": "",
+  "vacant": true,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_1",
+  "label": "Background information of the asset being valued;",
+  "section": "Valuer details for the bank",
+  "default": "Details already mentioned in Description of the property above",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_2",
+  "label": "Purpose of valuation and appointing authority",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_3",
+  "label": "Identity of the valuer and any other experts involved in the valuation;",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_4",
+  "label": "Disclosure of valuer interest or conflict, if any;",
+  "section": "Valuer details for the bank",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_appointment",
+  "label": "Date of appointment",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_visit",
+  "label": "Valuation/visit date",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_report",
+  "label": "Date of report",
+  "section": "Valuer details for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_6",
+  "label": "Inspections and/or investigations undertaken;",
+  "section": "Valuer details for the bank",
+  "default": "Data of the valuation report is as per site identification by the purchase/mortgagor during site visit\nContacted the local real estate agent, local person as well as browsed various real estate websites to arrive fair market value of the subject property under valuation",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_7",
+  "label": "Nature and sources of the information used or relied upon;",
+  "section": "Valuer details for the bank",
+  "default": "All the list of copy of documents as mentioned above to pursue the valuation\nInformation relied upon Personal enquiry/judgement & other sources such as brokers and surrounding persons",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_8",
+  "label": "Procedures adopted in carrying out the valuation and valuation standards followed;",
+  "section": "Valuer details for the bank",
+  "default": "Market Approach method used (Land and Building rate) and IVS adopted.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_9",
+  "label": "Restrictions on use of the report, if any;",
+  "section": "Valuer details for the bank",
+  "default": "This valuation report only meant for BOI bank, not use for legal/ court purpose & It cannot be used by any other Financial institute or for any other purpose",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_10",
+  "label": "Major factors that were taken into account during the valuation;",
+  "section": "Valuer details for the bank",
+  "default": "Market value expressed here is the value of the property on the date of valuation \nReal-estate market is not a stable market. It is volatile market and subject to change due to external factors, such as riots , natural calamities , policy changes by the govt. authorities, stigma effects and various other factor , Value is an opinion and the opinion expressed by the valuer is not binding to the parties in transaction`",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "market_opinion",
+  "label": "Valuer's opinion on the rate adopted (as per verbal & telephonic enquiry ...)",
+  "section": "Market enquiry (dealers)",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "inv_fee_valuation",
+  "label": "Invoice: valuation fee (Rs.)",
+  "section": "Pro-forma invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "inv_fee_other",
+  "label": "Invoice: other fee (Rs.)",
+  "section": "Pro-forma invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "inv_total",
+  "label": "Invoice: total (Rs.)",
+  "section": "Pro-forma invoice",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ }
+]

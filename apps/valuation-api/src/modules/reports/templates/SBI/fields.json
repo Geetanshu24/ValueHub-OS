@@ -1,0 +1,938 @@
+[
+ {
+  "key": "distress_short",
+  "label": "Distress value (short)",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": true
+ },
+ {
+  "key": "realizable_short",
+  "label": "Realizable value (short)",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": true
+ },
+ {
+  "key": "fmv_short",
+  "label": "Fair market value (short, for the opinion line)",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": true
+ },
+ {
+  "key": "le_place",
+  "label": "Letter of engagement place",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "le_date",
+  "label": "Letter of engagement date",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "bank_address",
+  "label": "Bank branch address (To, ...)",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "valuer_name",
+  "label": "Valuer name (for signature)",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "inspection_date",
+  "label": "Date of inspection",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "report_date",
+  "label": "Report date",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "report_ref",
+  "label": "Report reference",
+  "section": "Report details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "owner_details",
+  "label": "Name of the owner",
+  "section": "1. Customer details",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "customer_contact",
+  "label": "Contact Number",
+  "section": "1. Customer details",
+  "default": "N.A.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "application_no",
+  "label": "Customer Details: Apl No",
+  "section": "1. Customer details",
+  "default": "N.A.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "postal_address",
+  "label": "Property Details: Address",
+  "section": "2. Property details",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "approving_authority",
+  "label": "Name of Approving Authority",
+  "section": "3. Document details",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "layout_plan",
+  "label": "Name of Approving Authority: Layout Plan (details)",
+  "section": "3. Document details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "layout_plan_2",
+  "label": "Name of Approving Authority: Layout Plan (remarks)",
+  "section": "3. Document details",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "layout_plan_3",
+  "label": "Name of Approving Authority: Layout Plan (approving authority)",
+  "section": "3. Document details",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "building_plan",
+  "label": "Name of Approving Authority: Building Plan (details)",
+  "section": "3. Document details",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "building_plan_2",
+  "label": "Name of Approving Authority: Building Plan (remarks)",
+  "section": "3. Document details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "building_plan_3",
+  "label": "Name of Approving Authority: Building Plan (approving authority)",
+  "section": "3. Document details",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "construction_permission",
+  "label": "Construction Permission (details)",
+  "section": "3. Document details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "construction_permission_2",
+  "label": "Construction Permission (remarks)",
+  "section": "3. Document details",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "construction_permission_3",
+  "label": "Construction Permission (approving authority)",
+  "section": "3. Document details",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "documents_list",
+  "label": "Legal Documents",
+  "section": "3. Document details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "adj_east",
+  "label": "Adjoining property (east)",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "adj_north",
+  "label": "Adjoining property (north)",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "adj_west",
+  "label": "Adjoining property (west)",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "adj_south",
+  "label": "Adjoining property (south)",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "matching_boundaries",
+  "label": "Matching of Boundaries",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "plot_demarcated",
+  "label": "Plot Demarcated",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "approved_land_use",
+  "label": "Approved Land Use",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "property_type",
+  "label": "Type of Property",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "num_rooms",
+  "label": "Physical Details: No of rooms",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "total_floors",
+  "label": "Total No of floors",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "floor_located",
+  "label": "Floor on which the propertyis located",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "approx_age",
+  "label": "Approx. age of theProperty",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "residual_age",
+  "label": "Residual age of the Property",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "structure_type",
+  "label": "Type of structure",
+  "section": "4. Physical details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tenure_status",
+  "label": "Status of tenure (status)",
+  "section": "5. Tenure / occupancy details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tenure_status_2",
+  "label": "Status of tenure (remark)",
+  "section": "5. Tenure / occupancy details",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "tenant_relationship",
+  "label": "Relationship of tenant or owner",
+  "section": "5. Tenure / occupancy details",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "construction_stage",
+  "label": "Stage of construction",
+  "section": "6. Stage of construction",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "completion_extent",
+  "label": "If under construction, extent of completion",
+  "section": "6. Stage of construction",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "violations",
+  "label": "Nature and extent of violations",
+  "section": "7. Violations",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_site",
+  "label": "Site Area / Super Area (site area)",
+  "section": "8. Area details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_remark",
+  "label": "Site Area / Super Area (remark)",
+  "section": "8. Area details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_covered",
+  "label": "Plinth / Covered Area:",
+  "section": "8. Area details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_carpet",
+  "label": "Area Details of the property: Carpet area:",
+  "section": "8. Area details",
+  "default": "N.A.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "area_saleable",
+  "label": "Saleable area:",
+  "section": "8. Area details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mv_area",
+  "label": "Property market value (area)",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mv_rate",
+  "label": "Property market value (rate)",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mv_amount",
+  "label": "Property market value (amount)",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mv_other",
+  "label": "Other item in the market value (e.g. land, parking) (item / area)",
+  "section": "9. Valuation",
+  "default": "NA",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mv_other_rate",
+  "label": "Other item in the market value (e.g. land, parking) (rate)",
+  "section": "9. Valuation",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mv_other_amount",
+  "label": "Other item in the market value (e.g. land, parking) (amount)",
+  "section": "9. Valuation",
+  "default": "-",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "mv_total",
+  "label": "Valuation: Total",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "fmv",
+  "label": "Fair Market Value",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "realizable",
+  "label": "Realizable Value 95%",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "distress",
+  "label": "Forced/ Distress Value 85%",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "valuer_reg_line",
+  "label": "Name address & signature of valuer with Valuer Registration No.",
+  "section": "12. Valuer",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "valuation_date",
+  "label": "Date of Valuation:",
+  "section": "12. Valuer",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_a",
+  "label": "Layout plan sketch of the area in which the property is located with latitude and longitude",
+  "section": "13. Enclosures",
+  "default": "GPS Coordinates Attached",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_b",
+  "label": "Building Plan",
+  "section": "13. Enclosures",
+  "default": "Mentioned in Point No- 3",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_c",
+  "label": "Floor Plan",
+  "section": "13. Enclosures",
+  "default": "As Above",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_d",
+  "label": "Photograph of the property (including geo-stamping with date) and owner (in case of housing loans, if borrower is available) including a “Selfie’ at the site",
+  "section": "13. Enclosures",
+  "default": "Yes (Attached)",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_e",
+  "label": "Certified copy of the approved / sanctioned plan wherever applicable from the concerned office",
+  "section": "13. Enclosures",
+  "default": "As Above",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_f",
+  "label": "Google Map location of the property",
+  "section": "13. Enclosures",
+  "default": "GPS Coordinates Attached",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_g",
+  "label": "Price trend of the Property in the locality/city from property search sites viz Magic bricks.com, 99Acres.com, Makan.com etc.",
+  "section": "13. Enclosures",
+  "default": "Online References from Magic bricks & 99acres attached.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_h",
+  "label": "Special remarks, if any life threat of acquisition of land for public service purpose, road widening or applicability of CRZ provisions etc. (Distance from sea- coast/ tidal level must be incorporated) if any",
+  "section": "13. Enclosures",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "enc_i",
+  "label": "Any other relevant documents/ extracts",
+  "section": "13. Enclosures",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_1",
+  "label": "Background information of the asset being valued;",
+  "section": "Valuer comments for the bank",
+  "default": "Details already mentioned in Description of the property above",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_2",
+  "label": "Purpose of valuation and appointing authority",
+  "section": "Valuer comments for the bank",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_3",
+  "label": "Identity of the valuer and any other experts involved in the valuation;",
+  "section": "Valuer comments for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_4",
+  "label": "Disclosure of valuer interest or conflict, if any;",
+  "section": "Valuer comments for the bank",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_appointment",
+  "label": "Date of appointment",
+  "section": "Valuer comments for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_visit",
+  "label": "Valuation/visit date",
+  "section": "Valuer comments for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_5_report",
+  "label": "Date of report",
+  "section": "Valuer comments for the bank",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_6",
+  "label": "Inspections and/or investigations undertaken;",
+  "section": "Valuer comments for the bank",
+  "default": "Data of the valuation report is as per site identification by the purchase/mortgagor/ Representative during site visit Contacted the local real estate agent, local person as well as browsed various real estate websites to arrive fair market value of the subject property under valuation",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_7",
+  "label": "Nature and sources of the information used or relied upon;",
+  "section": "Valuer comments for the bank",
+  "default": "All the list of copy of documents as mentioned above to pursue the valuation Information relied upon Personal enquiry/ judgment & other sources such as brokers and surrounding persons",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_8",
+  "label": "Procedures adopted in carrying out the valuation and valuation standards followed;",
+  "section": "Valuer comments for the bank",
+  "default": "Market Approach method used (Composite rate) and IVS adopted.",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "dec_9",
+  "label": "Restrictions on use of the report, if any;",
+  "section": "Valuer comments for the bank",
+  "default": "This valuation report only meant for SBI Bank, not use for legal/ court purpose & It cannot be used by any other Financial institute or for any other purpose",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "dec_10",
+  "label": "Major factors that were taken into account during the valuation;",
+  "section": "Valuer comments for the bank",
+  "default": "Market value expressed here is the value of the property on the date of valuation Real-estate market is not a stable market. It is volatile market and subject to change due to external factors, such as riots , natural calamities , policy changes by the govt. authorities, stigma effects and various other factor Value is an opinion and the opinion expressed by the valuer is not binding to the parties in transaction",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "le_tenure",
+  "label": "Tenure (Freehold / Leasehold)",
+  "section": "Letter of engagement",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_east_deed",
+  "label": "Tenure (Freehold / Leasehold): East (as per deed)",
+  "section": "Letter of engagement",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_west_deed",
+  "label": "Tenure (Freehold / Leasehold): West (as per deed)",
+  "section": "Letter of engagement",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_north_deed",
+  "label": "Tenure (Freehold / Leasehold): North (as per deed)",
+  "section": "Letter of engagement",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "boundary_south_deed",
+  "label": "Tenure (Freehold / Leasehold): South (as per deed)",
+  "section": "Letter of engagement",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "google_map_link",
+  "label": "Google map link of the property",
+  "section": "Letter of engagement",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "landmark",
+  "label": "Nearby landmark",
+  "section": "2. Property details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "google_map",
+  "label": "Google map",
+  "section": "2. Property details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "independent_access",
+  "label": "Independent access to the property",
+  "section": "2. Property details",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "val_deals_note",
+  "label": "Details of last two deals / transactions",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "val_difference_note",
+  "label": "Difference between market value and circle rate (reason)",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "gl_rate",
+  "label": "Guideline value: circle rate",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "gl_calc",
+  "label": "Guideline value: calculation",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "gl_total",
+  "label": "Guideline value: total circle value",
+  "section": "9. Valuation",
+  "default": "",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "as_tir",
+  "label": "Qualifications in TIR / mitigation suggested",
+  "section": "10. Assumptions / remarks",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "as_sarfaesi",
+  "label": "Property is SARFAESI compliant",
+  "section": "10. Assumptions / remarks",
+  "default": "Yes",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "as_social",
+  "label": "Whether property belongs to social infrastructure",
+  "section": "10. Assumptions / remarks",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "as_transactions",
+  "label": "Details of last two transactions in the locality",
+  "section": "10. Assumptions / remarks",
+  "default": "No, we tried to enquire about the last two sale instances from the sub registrar office also bank give limited time period for valuation report formation, however due to confidentiality the information was not disclosed& limited time period. Hence, we enquired from renowned estate agents and online search engines about the prevailing market value of similar properties.",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "as_other",
+  "label": "Any other aspect on value or marketability",
+  "section": "10. Assumptions / remarks",
+  "default": "No",
+  "vacant": false,
+  "long": false,
+  "hidden": false
+ },
+ {
+  "key": "as_resale",
+  "label": "Resale instance remark",
+  "section": "10. Assumptions / remarks",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ },
+ {
+  "key": "market_opinion",
+  "label": "Valuer's opinion on the rate adopted (as per verbal & telephonic enquiry ...)",
+  "section": "Assessment factor and rate opinion",
+  "default": "",
+  "vacant": false,
+  "long": true,
+  "hidden": false
+ }
+]
