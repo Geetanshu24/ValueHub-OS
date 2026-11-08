@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './common/auth/jwt-auth.guard.js';
 import { RolesGuard } from './common/auth/roles.guard.js';
 import { HealthController } from './health/health.controller.js';
 import { AdminConfigModule } from './modules/admin-config/admin-config.module.js';
+import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { AuditViewModule } from './modules/audit/audit-view.module.js';
 import { AccountsModule } from './modules/accounts/accounts.module.js';
 import { AssignmentsModule } from './modules/assignments/assignments.module.js';
@@ -52,6 +53,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     UsersModule,
     ValuationsModule,
     AuditViewModule,
+    NotificationsModule,
     ComparablesModule,
     ReportsModule,
     SubmissionsModule,

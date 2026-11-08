@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 import { ASSIGNMENT_STATUS_LABELS, type AssignmentStatus } from '@value-hub/valuation-shared'
+import AssignmentPopup from './AssignmentPopup.tsx'
 import PullToRefresh from './PullToRefresh.tsx'
 import { FLOW, STEP_OF_STATUS, stepPath } from './WorkflowParts.tsx'
 import { useAuth } from '../lib/auth.tsx'
@@ -17,7 +18,6 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: string;
   { label: 'Records', items: [
     { to: '/properties', label: 'Properties', icon: '⌂' },
     { to: '/documents', label: 'Document Desk', icon: '▤' },
-    { to: '/inspections', label: 'Visit calendar', icon: '◷' },
     { to: '/revisions', label: 'Bank queries', icon: '✉' },
     { to: '/evidence', label: 'Evidence Vault', icon: '⛁' },
   ] },
@@ -39,6 +39,9 @@ export default function Layout() {
   const current = useFetch<Current>(currentId ? `/assignments/${currentId}` : null).data
   const stepNow = current ? STEP_OF_STATUS[current.status] : -1
   const isAdmin = user?.role === 'FIRM_ADMIN'
+  const isDrafter = user?.role === 'DRAFTER'
+  // Drafters and inspectors work only on the cases given to them: no creating cases, no firm-wide pages.
+  const isFieldStaff = isDrafter || user?.role === 'INSPECTOR'
   const close = () => setMenuOpen(false)
 
   return (
@@ -55,7 +58,7 @@ export default function Layout() {
       <aside className={`sn ${menuOpen ? 'is-open' : ''}`} aria-label="Main navigation">
         <Link to="/" className="sn-brand" onClick={close}><span className="sn-logo">VH</span><span><b>ValueHub OS</b><small>Valuation Operating System</small></span></Link>
         <nav className="sn-scroll">
-          {GROUPS.slice(0, 1).map((group) => <div key={group.label} className="sn-group"><p>{group.label}</p>{group.items.map((item) => <NavLink key={item.to} to={item.to} end={item.end} onClick={close} className={({ isActive }) => `sn-item ${isActive && !(item.to === '/assignments' && location.pathname.startsWith('/assignments/') && currentId) ? 'is-on' : ''}`}><i>{item.icon}</i>{item.label}</NavLink>)}</div>)}
+          {GROUPS.slice(0, 1).map((group) => <div key={group.label} className="sn-group"><p>{group.label}</p>{group.items.filter((item) => !isFieldStaff || item.to === '/assignments' || (!isDrafter && item.to === '/')).map((item) => <NavLink key={item.to} to={item.to} end={item.end} onClick={close} className={({ isActive }) => `sn-item ${isActive && !(item.to === '/assignments' && location.pathname.startsWith('/assignments/') && currentId) ? 'is-on' : ''}`}><i>{item.icon}</i>{item.label}</NavLink>)}</div>)}
 
           <div className="sn-group sn-flow">
             <p>Workflow</p>
@@ -72,7 +75,7 @@ export default function Layout() {
             {!current && <Link to="/assignments" className="sn-pick" onClick={close}>Choose an assignment →</Link>}
           </div>
 
-          {GROUPS.slice(1).map((group) => {
+          {(isFieldStaff ? [] : GROUPS.slice(1)).map((group) => {
             const items = group.items.filter((item) => !item.admin || isAdmin)
             return items.length > 0 && <div key={group.label} className="sn-group"><p>{group.label}</p>{items.map((item) => <NavLink key={item.to} to={item.to} end={item.end} onClick={close} className={({ isActive }) => `sn-item ${isActive ? 'is-on' : ''}`}><i>{item.icon}</i>{item.label}</NavLink>)}</div>
           })}
@@ -83,6 +86,7 @@ export default function Layout() {
           <button type="button" onClick={logout} className="sn-out">Sign out</button>
         </div>
       </aside>
+      <AssignmentPopup />
       <main className="min-w-0 flex-1 p-4 md:p-8">
         <PullToRefresh>
           <div className="pd-page"><Outlet /></div>

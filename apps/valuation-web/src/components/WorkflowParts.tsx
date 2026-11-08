@@ -13,32 +13,34 @@ export interface AssignmentHead {
 export interface ReadinessItem { key: string; label: string; state: 'done' | 'todo' | 'warn'; detail: string; blocking: boolean }
 export interface Readiness { items: ReadinessItem[]; done: number; total: number; canProceed: boolean; complete: boolean }
 
-export const FLOW = ['Assignment intake', 'Property & documents', 'Site inspection', 'Valuation workings', 'Quality review', 'Approval & submission']
+// Site inspection, valuation workings, quality review and submission are hidden for now; their pages and routes still exist.
+export const FLOW = ['Assignment intake', 'Property & documents', 'Drafter workbench', 'Site inspection', 'Compare', 'Bank report', 'Check & send']
 // Which workflow step an assignment's status puts the work on (0-based).
-export const STEP_OF_STATUS: Record<AssignmentStatus, number> = { INTAKE: 1, DOCUMENTS: 1, INSPECTION: 2, VALUATION: 3, QUALITY_REVIEW: 4, APPROVED: 5, SUBMITTED: 5, REVISION: 3, CLOSED: 6, CANCELLED: 0 }
-const MODULE_OF_STEP = ['/assignments', '/documents', '/inspections', '/valuation', '/reports', '/reports']
+export const STEP_OF_STATUS: Record<AssignmentStatus, number> = { INTAKE: 1, DOCUMENTS: 1, INSPECTION: 2, VALUATION: 2, QUALITY_REVIEW: 2, APPROVED: 2, SUBMITTED: 2, REVISION: 2, CLOSED: 7, CANCELLED: 0 }
+const MODULE_OF_STEP = ['/assignments', '/documents', '/reports', '/inspections', '/reports', '/reports', '/reports']
 
 // Where each workflow step lives. Steps 2 and 3 have their own pages per assignment.
 export function stepPath(index: number, id: string): string {
   if (index === 0) return `/assignments/${id}`
   if (index === 1) return `/assignments/${id}/documents`
-  if (index === 2) return `/assignments/${id}/inspection`
-  if (index === 3) return `/assignments/${id}/valuation`
-  if (index === 4) return `/assignments/${id}/review`
-  if (index === 5) return `/assignments/${id}/submission`
-  return `${MODULE_OF_STEP[Math.min(index, 5)]}?assignment=${id}`
+  if (index === 2) return `/assignments/${id}/workbench`
+  if (index === 3) return `/assignments/${id}/inspection`
+  if (index === 4) return `/assignments/${id}/compare`
+  if (index === 5) return `/assignments/${id}/bank-report`
+  if (index >= 6) return `/assignments/${id}/check`
+  return `${MODULE_OF_STEP[Math.min(index, 6)]}?assignment=${id}`
 }
 
 // What to do next on an assignment in each stage, and which workflow step it belongs to (0-based).
 export const NEXT_ACTION: Record<AssignmentStatus, { label: string; step: number } | null> = {
   INTAKE: { label: 'Add property & documents', step: 1 },
   DOCUMENTS: { label: 'Verify the documents', step: 1 },
-  INSPECTION: { label: 'Do the site inspection', step: 2 },
-  VALUATION: { label: 'Work out the valuation', step: 3 },
-  REVISION: { label: 'Revise the valuation', step: 3 },
-  QUALITY_REVIEW: { label: 'Review & approve', step: 4 },
-  APPROVED: { label: 'Issue & submit to the bank', step: 5 },
-  SUBMITTED: { label: 'Track the bank’s response', step: 5 },
+  INSPECTION: { label: 'Read the documents', step: 2 },
+  VALUATION: { label: 'Read the documents', step: 2 },
+  REVISION: { label: 'Read the documents', step: 2 },
+  QUALITY_REVIEW: { label: 'Read the documents', step: 2 },
+  APPROVED: { label: 'Read the documents', step: 2 },
+  SUBMITTED: { label: 'Read the documents', step: 2 },
   CLOSED: null,
   CANCELLED: null,
 }

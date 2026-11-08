@@ -23,7 +23,7 @@ export interface PrefillInput {
     longitude: number | null;
     boundaries: Partial<Record<'north' | 'south' | 'east' | 'west', string>> | null;
   };
-  inspection: { visitedAt: Date; latitude: number | null; longitude: number | null } | null;
+  inspection: { observations?: Record<string, string>; visitedAt: Date; latitude: number | null; longitude: number | null } | null;
   valuation: { totalValue: number; adoptedAreaSqm: number } | null;
   // Best known value for each documented fact (reviewed value if there is one).
   facts: Record<string, string>;
@@ -55,7 +55,7 @@ export function prefillBoi(input: PrefillInput): Record<string, string> {
   const inspected = inspection ? formatDate(inspection.visitedAt) : '';
   set('report_ref', a.code);
   set('report_date', formatDate(input.today));
-  set('place', p.district ?? undefined);
+  set('place', facts.district ?? p.district ?? undefined);
   set('valuer_name', input.valuerName);
   set('purpose', a.purpose);
   set('inspection_date', inspected);
@@ -82,14 +82,15 @@ export function prefillBoi(input: PrefillInput): Record<string, string> {
   const kind = PROPERTY_CLASS_LABELS[p.propertyClass];
   set('property_description', `${kind}${extent ? `, measuring ${extent}` : ''}${p.locality ? `, ${p.locality}` : ''}`);
   set('plot_no', [p.unitDetail ?? facts.plot_number, p.locality].filter(Boolean).join(', '));
-  set('village', p.village ?? facts.village);
-  set('ward', p.tehsil ?? facts.tehsil);
-  set('district', p.district ?? facts.district);
-  set('postal_address', [p.addressLine || facts.property_address, p.pinCode ?? facts.pin_code].filter(Boolean).join(' '));
-  set('city', p.district ?? facts.district);
+  // What the drafter read from the documents comes first; the property record fills what the papers do not say.
+  set('village', facts.village ?? p.village);
+  set('ward', facts.tehsil ?? p.tehsil);
+  set('district', facts.district ?? p.district);
+  set('postal_address', [facts.property_address || p.addressLine, facts.pin_code ?? p.pinCode].filter(Boolean).join(' '));
+  set('city', facts.district ?? p.district);
   set('area_residential', p.propertyClass === 'COMMERCIAL' || p.propertyClass === 'INDUSTRIAL' ? 'No' : 'Residential');
 
-  for (const side of ['north', 'south', 'east', 'west'] as const) set(`boundary_${side}_deed`, p.boundaries?.[side] ?? facts[`boundary_${side}`]);
+  for (const side of ['north', 'south', 'east', 'west'] as const) set(`boundary_${side}_deed`, facts[`boundary_${side}`] ?? p.boundaries?.[side]);
 
   for (const side of ['north', 'south', 'east', 'west'] as const) set(`dimension_${side}_deed`, facts[`dimension_${side}`]);
 
@@ -189,6 +190,36 @@ export function prefillBoi(input: PrefillInput): Record<string, string> {
     set(`broker${n}_range`, rate);
     set(`broker${n}_location`, place);
   }
+  // What the inspector found on site, for the "as per actual" boxes.
+  const site = inspection?.observations ?? {};
+  for (const side of ['north', 'south', 'east', 'west'] as const) set(`boundary_${side}_actual`, site[`site_boundary_${side}`]);
+  set('occupancy', site.occupancy);
+  set('landmark', site.landmark);
+  set('person_met_name', site.occupant_name);
+  set('site_flooding', site.flood_prone);
+  // Construction, as read from the documents.
+  const builtAny = Number(facts.built_up_area_sqm ?? facts.flat_area_sqm ?? facts.shop_area_sqm ?? facts.floor_area_sqm ?? NaN);
+  if (Number.isFinite(builtAny) && builtAny > 0) {
+    const plinth = `${num(builtAny * SQFT_PER_SQM)} Sq Ft i.e. ${num(builtAny)} Sq Mtrs`;
+    set('b_plinth', plinth);
+    set('plinth_floorwise', plinth);
+    set('vl_plinth', plinth);
+    if (!out.area_covered) set('area_covered', plinth);
+  }
+  const builtYear = facts.year_of_construction?.match(/\d{4}/)?.[0];
+  if (builtYear) {
+    set('b_year', facts.year_of_construction);
+    set('year_construction', facts.year_of_construction);
+    const age = input.today.getUTCFullYear() - Number(builtYear);
+    if (age >= 0 && age < 300) {
+      for (const key of ['b_age', 'vl_age', 'en_5', 'approx_age']) set(key, `${age} years`);
+    }
+  }
+  set('building_details', facts.construction_details);
+  set('num_floors', facts.total_floors);
+  set('f51_3', facts.accommodation);
+  // The neighbours named in the documents, for the formats that ask "adjoining property".
+  for (const side of ['north', 'south', 'east', 'west'] as const) set(`adj_${side}`, facts[`boundary_${side}`]);
   set('land_guideline_rate', facts.guideline_rate);
   set('gl_rate', facts.guideline_rate);
   set('land_market_rate', facts.market_rate_range);

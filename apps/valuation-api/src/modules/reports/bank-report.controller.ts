@@ -1,9 +1,11 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query, StreamableFile, UseGuards } from '@nestjs/common';
+import { AssignmentAccessGuard } from '../../common/auth/assignment-access.guard.js';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import { BankReportAiService } from './bank-report-ai.service.js';
 import { BankReportService } from './bank-report.service.js';
 
+@UseGuards(AssignmentAccessGuard)
 @Controller('assignments/:assignmentId/bank-report')
 export class BankReportController {
   constructor(
@@ -16,10 +18,23 @@ export class BankReportController {
     return this.bankReport.form(user.firmId, assignmentId, format);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
   @Put()
   save(@CurrentUser() user: AuthUser, @Param('assignmentId', ParseUUIDPipe) assignmentId: string, @Body() body: { values?: Record<string, unknown> }, @Query('format') format?: string) {
     return this.bankReport.save(user.firmId, user, assignmentId, body?.values ?? {}, format);
+  }
+
+  // The drafter says the draft is finished; whoever gave them the case gets a pop-up to check it.
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
+  @Post('ready')
+  @HttpCode(200)
+  ready(@CurrentUser() user: AuthUser, @Param('assignmentId', ParseUUIDPipe) assignmentId: string) {
+    return this.bankReport.sendForChecking(user.firmId, user.userId, assignmentId);
+  }
+
+  @Get('compare')
+  compare(@CurrentUser() user: AuthUser, @Param('assignmentId', ParseUUIDPipe) assignmentId: string) {
+    return this.bankReport.compare(user.firmId, assignmentId);
   }
 
   @Get('docx')
@@ -46,21 +61,21 @@ export class BankReportController {
     return { enabled: this.ai.enabled() };
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
   @Post('ai/review')
   @HttpCode(200)
   review(@CurrentUser() user: AuthUser, @Param('assignmentId', ParseUUIDPipe) assignmentId: string, @Query('format') format?: string) {
     return this.ai.review(user.firmId, assignmentId, format);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
   @Post('ai/draft')
   @HttpCode(200)
   draft(@CurrentUser() user: AuthUser, @Param('assignmentId', ParseUUIDPipe) assignmentId: string, @Body() body: { keys?: string[] }, @Query('format') format?: string) {
     return this.ai.draft(user.firmId, assignmentId, format, Array.isArray(body?.keys) ? body.keys.filter((k) => typeof k === 'string').slice(0, 30) : undefined);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
   @Post('ai/photos')
   @HttpCode(200)
   photos(@CurrentUser() user: AuthUser, @Param('assignmentId', ParseUUIDPipe) assignmentId: string, @Query('format') format?: string) {

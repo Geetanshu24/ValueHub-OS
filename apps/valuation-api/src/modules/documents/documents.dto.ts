@@ -54,6 +54,12 @@ export class ListDocumentsQuery extends PaginationQuery {
   @IsOptional() @IsIn(DOCUMENT_TYPES) type?: DocumentType;
 }
 
+export class SetFieldValueDto {
+  @IsString()
+  @MaxLength(500)
+  value!: string;
+}
+
 export class AddExtractedFieldDto {
   // snake_case key such as plot_area_sqm
   @Matches(/^[a-z][a-z0-9_]{1,59}$/, { message: 'fieldKey must be snake_case' })

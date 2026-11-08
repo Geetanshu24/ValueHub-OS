@@ -8,7 +8,7 @@ import { ErrorText, errorMessage, formatInr, inputClass } from '../components/ui
 import { api, type Paginated } from '../lib/api.ts'
 import { useFetch } from '../lib/useFetch.ts'
 
-interface Bank { id: string; name: string; branches: { id: string; name: string }[] }
+interface Bank { id: string; name: string; branches: { id: string; name: string; city: string | null; district: string | null; state: string | null }[] }
 interface Staff { id: string; fullName: string; role: string }
 interface Property { id: string; code: string; addressLine: string; propertyClass: PropertyClass; locality?: string | null; district?: string | null; state?: string | null }
 interface Assignment { id: string; code: string; purpose: string; dueDate: string; status: string; bank: { name: string }; property: { code: string; addressLine: string } }
@@ -66,13 +66,15 @@ export default function NewAssignment() {
   const [reuse, setReuse] = useState<Reuse | null>(null)
   const [previous, setPrevious] = useState<Assignment[]>([])
   const [property, setProperty] = useState(blankProperty)
-  const [form, setForm] = useState({ bankId: '', branchId: '', assignedValuerId: '', purpose: '', scope: '', valuationDate: dateToday, instructionDate: dateToday, dueDate: dueDefault, priority: 'NORMAL' as AssignmentPriority, borrowerName: '', fee: '' })
+  const [form, setForm] = useState({ bankId: '', branchId: '', assignedValuerId: '', assignedDrafterId: '', assignedInspectorId: '', clientPhone: '', purpose: '', scope: '', valuationDate: dateToday, instructionDate: dateToday, dueDate: dueDefault, priority: 'NORMAL' as AssignmentPriority, borrowerName: '', fee: '' })
   const [documentType, setDocumentType] = useState<DocumentType>('BANK_INSTRUCTION')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [created, setCreated] = useState<{ id: string; code: string; uploaded: number; failed: string[] } | null>(null)
   const [draft, setDraft] = useState(readDraft)
   const branches = banks.data?.items.find((bank) => bank.id === form.bankId)?.branches ?? []
+  const drafters = useMemo(() => staff.data?.filter((person) => person.role === 'DRAFTER') ?? [], [staff.data])
+  const inspectors = useMemo(() => staff.data?.filter((person) => person.role === 'INSPECTOR' || person.role === 'VALUER') ?? [], [staff.data])
   const validStaff = useMemo(() => staff.data?.filter((person) => person.role === 'VALUER' || person.role === 'FIRM_ADMIN') ?? [], [staff.data])
   const bankName = (id: string) => banks.data?.items.find((bank) => bank.id === id)?.name
 
@@ -157,6 +159,7 @@ export default function NewAssignment() {
       const assignment = await api.post<{ id: string; code: string }>('/assignments', {
         bankId: form.bankId, propertyId, assignedValuerId: form.assignedValuerId, purpose: form.purpose,
         valuationDate: form.valuationDate, dueDate: form.dueDate, intakeSource: source, priority: form.priority,
+        ...(form.assignedDrafterId && { assignedDrafterId: form.assignedDrafterId }), ...(form.assignedInspectorId && { assignedInspectorId: form.assignedInspectorId }), ...(form.clientPhone.trim() && { clientPhone: form.clientPhone.trim() }),
         ...(form.instructionDate && { instructionDate: form.instructionDate }), ...(form.borrowerName.trim() && { borrowerName: form.borrowerName.trim() }),
         ...(reuse && { reusedFromId: reuse.assignmentId }),
         ...(form.branchId && { branchId: form.branchId }), ...(form.scope && { scope: form.scope }), ...(form.fee && { fee: Number(form.fee) }),
@@ -265,10 +268,13 @@ export default function NewAssignment() {
         </div></section>}
         <section className="intake-panel intake-form-panel"><div className="intake-panel-heading"><div><h3>Assignment details</h3><p>Bank, purpose, owner and dates for this valuation.</p></div><span className="intake-form-step">ASSIGNMENT</span></div><div className="intake-fields-grid">
           <label>Bank *<select className={inputClass} required value={form.bankId} onChange={(e) => setForm({ ...form, bankId: e.target.value, branchId: '' })}><option value="">Choose bank…</option>{banks.data?.items.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></label>
-          <label>Branch<select className={inputClass} value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}><option value="">Optional</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
+          <label>Branch<select className={inputClass} value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}><option value="">Optional</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{[branch.name, branch.city, branch.district, branch.state].filter(Boolean).join(', ')}</option>)}</select></label>
           <label>Purpose *<input className={inputClass} required minLength={2} placeholder="e.g. Loan Against Property" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} /></label>
-          <label>Borrower name<input className={inputClass} value={form.borrowerName} onChange={(e) => setForm({ ...form, borrowerName: e.target.value })} /></label>
+          <label>Client name<input className={inputClass} value={form.borrowerName} onChange={(e) => setForm({ ...form, borrowerName: e.target.value })} /></label>
+          <label>Client phone<input className={inputClass} type="tel" value={form.clientPhone} onChange={(e) => setForm({ ...form, clientPhone: e.target.value })} /></label>
           <label>Assigned valuer *<select className={inputClass} required value={form.assignedValuerId} onChange={(e) => setForm({ ...form, assignedValuerId: e.target.value })}><option value="">Choose valuer…</option>{validStaff.map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label>
+          <label>Drafter<select className={inputClass} value={form.assignedDrafterId} onChange={(e) => setForm({ ...form, assignedDrafterId: e.target.value })}><option value="">Choose drafter…</option>{drafters.map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label>
+          <label>Site inspector<select className={inputClass} value={form.assignedInspectorId} onChange={(e) => setForm({ ...form, assignedInspectorId: e.target.value })}><option value="">Choose inspector…</option>{inspectors.map((person) => <option key={person.id} value={person.id}>{person.fullName}</option>)}</select></label>
           <label>Priority<select className={inputClass} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as AssignmentPriority })}>{ASSIGNMENT_PRIORITIES.map((value) => <option key={value} value={value}>{ASSIGNMENT_PRIORITY_LABELS[value]}</option>)}</select></label>
           <label>Instruction date<input className={inputClass} type="date" value={form.instructionDate} onChange={(e) => setForm({ ...form, instructionDate: e.target.value })} /></label>
           <label>Valuation date *<input className={inputClass} type="date" required value={form.valuationDate} onChange={(e) => setForm({ ...form, valuationDate: e.target.value })} /></label>

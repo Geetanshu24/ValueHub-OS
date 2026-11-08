@@ -44,6 +44,7 @@ const fieldSelect = {
   source: true,
   state: true,
   verifiedValue: true,
+  useInReport: true,
   reviewedAt: true,
 } satisfies Prisma.ExtractedFieldSelect;
 
@@ -237,6 +238,57 @@ export class DocumentsService {
     });
   }
 
+  // Saves what the drafter read from this document for one fact. The newest entry for that fact is
+  // updated (so a cell never piles up copies); an empty value marks it unknown so it drops out of the report.
+  async setFieldValue(firmId: string, actorId: string, documentId: string, fieldKey: string, rawValue: string) {
+    if (!/^[a-z][a-z0-9_]{1,59}$/.test(fieldKey)) throw new BadRequestException('fieldKey must be snake_case');
+    await this.requireDocument(firmId, documentId);
+    const value = rawValue.trim();
+    if (value) this.assertValueShape(fieldKey, value);
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.extractedField.findFirst({
+        where: { documentId, firmId, fieldKey },
+        orderBy: { id: 'desc' },
+        select: { id: true, extractedValue: true, state: true, verifiedValue: true },
+      });
+      if (!existing) {
+        if (!value) return null;
+        const created = await tx.extractedField.create({
+          data: { firmId, documentId, fieldKey, extractedValue: value, pageNumber: 1, source: 'MANUAL' },
+          select: fieldSelect,
+        });
+        await this.audit.record({ firmId, actorId, entityType: 'ExtractedField', entityId: created.id, action: 'field.entered' }, tx);
+        return created;
+      }
+      const current = (existing.state === 'CORRECTED' ? existing.verifiedValue ?? existing.extractedValue : existing.extractedValue).trim();
+      if (value === current && existing.state !== 'UNKNOWN') return tx.extractedField.findUniqueOrThrow({ where: { id: existing.id }, select: fieldSelect });
+      const updated = await tx.extractedField.update({
+        where: { id: existing.id },
+        data: value
+          ? { extractedValue: value, state: 'UNVERIFIED', verifiedValue: null, reviewedById: null, reviewedAt: null, source: 'MANUAL' }
+          : { state: 'UNKNOWN', reviewedById: actorId, reviewedAt: new Date() },
+        select: fieldSelect,
+      });
+      await this.audit.record({ firmId, actorId, entityType: 'ExtractedField', entityId: updated.id, action: value ? 'field.entered' : 'field.cleared' }, tx);
+      return updated;
+    });
+  }
+
+  // The drafter picks which document's value the report uses for a fact. One choice per fact across the
+  // property's documents; the others stay as they are, and review states are left alone.
+  async useFieldInReport(firmId: string, actorId: string, documentId: string, fieldKey: string) {
+    const document = await this.requireDocument(firmId, documentId);
+    return this.prisma.$transaction(async (tx) => {
+      const chosen = await tx.extractedField.findFirst({ where: { documentId, firmId, fieldKey, state: { not: 'UNKNOWN' } }, orderBy: { id: 'desc' }, select: { id: true } });
+      if (!chosen) throw new BadRequestException('This document has no value for that fact yet');
+      await tx.extractedField.updateMany({ where: { firmId, fieldKey, useInReport: true, document: { propertyId: document.propertyId } }, data: { useInReport: false } });
+      const updated = await tx.extractedField.update({ where: { id: chosen.id }, data: { useInReport: true }, select: fieldSelect });
+      await this.audit.record({ firmId, actorId, entityType: 'ExtractedField', entityId: chosen.id, action: 'field.chosen_for_report', metadata: { fieldKey } }, tx);
+      return updated;
+    });
+  }
+
   async reviewField(firmId: string, actorId: string, fieldId: string, dto: ReviewFieldDto) {
     const field = await this.prisma.extractedField.findFirst({
       where: { id: fieldId, firmId },
@@ -278,7 +330,7 @@ export class DocumentsService {
   }
 
   private async requireDocument(firmId: string, id: string) {
-    const document = await this.prisma.document.findFirst({ where: { id, firmId }, select: { id: true, pageCount: true } });
+    const document = await this.prisma.document.findFirst({ where: { id, firmId }, select: { id: true, pageCount: true, propertyId: true } });
     if (!document) throw new NotFoundException('Document not found');
     return document;
   }

@@ -21,9 +21,24 @@ interface Assignment {
   fee: string | null
   status: AssignmentStatus
   bank: { name: string }
-  branch: { name: string } | null
+  branch: { name: string; city: string | null; district: string | null; state: string | null } | null
+  clientPhone: string | null
+  borrowerName: string | null
+  receivedAt: string
+  assignedDrafter: { id: string; fullName: string } | null
+  assignedInspector: { id: string; fullName: string } | null
   property: { id: string; code: string; addressLine: string; propertyClass: string }
   assignedValuer: { id: string; fullName: string }
+  assignedAt: string
+  acknowledgedAt: string | null
+  billing?: { status: 'none' | 'unpaid' | 'part_paid' | 'paid'; amount: number; outstanding: number; code: string | null }
+}
+interface AuditRow { id: string; action: string; actorName: string | null; createdAt: string; metadata: { from?: string; to?: string } | null }
+const ACTION_LABELS: Record<string, string> = {
+  'assignment.created': 'Case created and assigned',
+  'assignment.reallocated': 'Case given to a different valuer',
+  'assignment.acknowledged': 'Valuer opened the case pop-up',
+  'assignment.updated': 'Details edited',
 }
 interface Hold {
   legalHold: boolean
@@ -39,6 +54,7 @@ export default function AssignmentDetail() {
   const { user } = useAuth()
   const assignment = useFetch<Assignment>(`/assignments/${id}`)
   const staff = useFetch<Staff[]>('/users/staff')
+  const trail = useFetch<{ items: AuditRow[] }>(user?.role === 'FIRM_ADMIN' && id ? `/audit?entityType=Assignment&entityId=${id}&pageSize=50` : null)
   const [error, setError] = useState<string | null>(null)
   const [edit, setEdit] = useState<{ purpose: string; scope: string; dueDate: string; fee: string } | null>(null)
   const a = assignment.data
@@ -49,6 +65,7 @@ export default function AssignmentDetail() {
     try {
       await action()
       assignment.reload()
+      trail.reload()
     } catch (caught) {
       setError(errorMessage(caught))
     }
@@ -96,7 +113,22 @@ export default function AssignmentDetail() {
         </section>
       )}
 
-      <Card title="Stage">
+      <Card title="Case briefing">
+        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+          <div><dt className="inline text-ink-soft">Case no.: </dt><dd className="inline font-semibold">{a.code}</dd></div>
+          <div><dt className="inline text-ink-soft">Logged in: </dt><dd className="inline">{new Date(a.receivedAt).toLocaleString('en-IN')}</dd></div>
+          <div><dt className="inline text-ink-soft">Client: </dt><dd className="inline">{a.borrowerName ?? '—'}</dd></div>
+          <div><dt className="inline text-ink-soft">Client phone: </dt><dd className="inline">{a.clientPhone ?? '—'}</dd></div>
+          <div><dt className="inline text-ink-soft">Bank: </dt><dd className="inline">{a.bank.name}</dd></div>
+          <div><dt className="inline text-ink-soft">Branch: </dt><dd className="inline">{a.branch ? [a.branch.name, a.branch.city, a.branch.district, a.branch.state].filter(Boolean).join(', ') : '—'}</dd></div>
+          <div className="sm:col-span-2"><dt className="inline text-ink-soft">Purpose: </dt><dd className="inline">{a.purpose}</dd></div>
+          {a.billing && a.billing.status !== 'none' && <div className="sm:col-span-2"><dt className="inline text-ink-soft">Bill: </dt><dd className="inline">{a.billing.code} · ₹{a.billing.amount.toLocaleString('en-IN')} · <b className={a.billing.status === 'paid' ? 'text-emerald-700' : 'text-amber-700'}>{a.billing.status === 'paid' ? 'paid' : a.billing.status === 'part_paid' ? `part paid, ₹${a.billing.outstanding.toLocaleString('en-IN')} due` : 'unpaid'}</b></dd></div>}
+          <div><dt className="inline text-ink-soft">Drafter: </dt><dd className="inline">{a.assignedDrafter?.fullName ?? '—'}</dd></div>
+          <div><dt className="inline text-ink-soft">Site inspector: </dt><dd className="inline">{a.assignedInspector?.fullName ?? '—'}</dd></div>
+        </dl>
+      </Card>
+
+      {canEdit && <Card title="Stage">
         <p className="mb-3">Currently <strong>{ASSIGNMENT_STATUS_LABELS[a.status]}</strong>. Move to:</p>
         <div className="flex flex-wrap gap-2">
           {ASSIGNMENT_TRANSITIONS[a.status].map((next) => (
@@ -106,7 +138,7 @@ export default function AssignmentDetail() {
           ))}
           {ASSIGNMENT_TRANSITIONS[a.status].length === 0 && <span className="text-ink-soft">No further moves.</span>}
         </div>
-      </Card>
+      </Card>}
 
       <Card title="Details">
         {edit ? (
@@ -125,6 +157,7 @@ export default function AssignmentDetail() {
             <div><dt className="inline text-ink-soft">Due: </dt><dd className="inline">{formatDate(a.dueDate)}</dd></div>
             <div><dt className="inline text-ink-soft">Fee: </dt><dd className="inline">{a.fee ? `₹ ${Number(a.fee).toLocaleString('en-IN')}` : '—'}</dd></div>
             <div><dt className="inline text-ink-soft">Valuer: </dt><dd className="inline">{a.assignedValuer.fullName}</dd></div>
+            <div><dt className="inline text-ink-soft">Assigned: </dt><dd className="inline">{new Date(a.assignedAt).toLocaleString('en-IN')} · {a.acknowledgedAt ? `seen ${new Date(a.acknowledgedAt).toLocaleString('en-IN')}` : <b className="text-amber-700">not seen yet</b>}</dd></div>
           </dl>
         )}
         {!edit && canEdit && (
@@ -134,11 +167,42 @@ export default function AssignmentDetail() {
         )}
       </Card>
 
+      {canEdit && (
+        <Card title="Team on this case">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-sm">Drafter
+              <select className={inputClass} aria-label="Drafter" value={a.assignedDrafter?.id ?? ''} onChange={(e) => e.target.value && void run(() => api.patch(`/assignments/${id}`, { assignedDrafterId: e.target.value }))}>
+                <option value="">Not assigned</option>
+                {staff.data?.filter((s) => s.role === 'DRAFTER').map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+              </select>
+            </label>
+            <label className="text-sm">Site inspector
+              <select className={inputClass} aria-label="Site inspector" value={a.assignedInspector?.id ?? ''} onChange={(e) => e.target.value && void run(() => api.patch(`/assignments/${id}`, { assignedInspectorId: e.target.value }))}>
+                <option value="">Not assigned</option>
+                {staff.data?.filter((s) => s.role === 'INSPECTOR' || s.role === 'VALUER').map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+              </select>
+            </label>
+          </div>
+        </Card>
+      )}
+
       {user?.role === 'FIRM_ADMIN' && (
         <Card title="Reallocate">
           <select className={inputClass} aria-label="Reassign valuer" value={a.assignedValuer.id} onChange={(e) => void run(() => api.patch(`/assignments/${id}`, { assignedValuerId: e.target.value }))}>
             {staff.data?.filter((s) => s.role === 'VALUER' || s.role === 'FIRM_ADMIN').map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}
           </select>
+        </Card>
+      )}
+
+      {user?.role === 'FIRM_ADMIN' && (
+        <Card title="Activity">
+          {!trail.data ? <p className="text-sm text-ink-soft">Loading…</p> : trail.data.items.length === 0 ? <p className="text-sm text-ink-soft">Nothing recorded yet.</p> : (
+            <ol className="space-y-1 text-sm">
+              {trail.data.items.map((row) => (
+                <li key={row.id}><span className="text-ink-soft">{new Date(row.createdAt).toLocaleString('en-IN')}</span> · {ACTION_LABELS[row.action] ?? (row.action === 'assignment.status_changed' ? `Moved to ${ASSIGNMENT_STATUS_LABELS[row.metadata?.to as AssignmentStatus] ?? row.metadata?.to ?? 'a new stage'}` : row.action)}{row.actorName ? ` · ${row.actorName}` : ''}</li>
+              ))}
+            </ol>
+          )}
         </Card>
       )}
 
@@ -171,11 +235,11 @@ export default function AssignmentDetail() {
       <Card title="Work on this assignment">
         <div className="flex flex-wrap gap-2">
           <Link to={`/assignments/${id}/documents`} className={ghostButtonClass}>Property &amp; Documents</Link>
-          <Link to={`/assignments/${id}/inspection`} className={ghostButtonClass}>Site Inspection</Link>
-          <Link to={`/assignments/${id}/valuation`} className={ghostButtonClass}>Valuation</Link>
+          <Link to={`/assignments/${id}/workbench`} className={ghostButtonClass}>Drafter workbench</Link>
+          <Link to={`/assignments/${id}/inspection`} className={ghostButtonClass}>Site inspection</Link>
+          <Link to={`/assignments/${id}/compare`} className={ghostButtonClass}>Compare</Link>
+          {canEdit && <Link to={`/assignments/${id}/check`} className={ghostButtonClass}>Check &amp; send</Link>}
           <Link to={`/assignments/${id}/bank-report`} className={ghostButtonClass}>Bank report (Word / PDF)</Link>
-          <Link to={`/assignments/${id}/review`} className={ghostButtonClass}>Quality Review</Link>
-          <Link to={`/assignments/${id}/submission`} className={ghostButtonClass}>Approval &amp; Submission</Link>
           {links.filter(([, path]) => path !== '/documents' && path !== '/inspections' && path !== '/valuation' && path !== '/reports').map(([label, path]) => (
             <Link key={path} to={`${path}?assignment=${id}`} className={ghostButtonClass}>{label}</Link>
           ))}

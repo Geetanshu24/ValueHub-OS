@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { ASSIGNMENT_PRIORITY_LABELS, ASSIGNMENT_STATUS_LABELS, type AssignmentPriority, type AssignmentStatus } from '@value-hub/valuation-shared'
 import { dueLabel, FLOW, nextActionFor } from '../components/WorkflowParts.tsx'
 import { formatInr } from '../components/ui.tsx'
@@ -39,7 +39,13 @@ function Tile({ label, value, tone, to, hint }: { label: string; value: number |
   return to ? <Link to={to} className="cc-tile-link">{body}</Link> : body
 }
 
-export default function CommandCentre() {
+// A drafter has no dashboard: their home is the list of cases given to them.
+export default function CommandCentreGate() {
+  const { user } = useAuth()
+  return user?.role === 'DRAFTER' ? <Navigate to="/assignments" replace /> : <CommandCentre />
+}
+
+function CommandCentre() {
   const { user } = useAuth()
   const summary = useFetch<Summary>('/dashboard/summary')
   const queue = useFetch<QueueItem[]>('/dashboard/work-queue')

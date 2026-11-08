@@ -23,7 +23,7 @@ interface DocRow {
 }
 interface Suggestion { id: string; label: string; value: string; from: string; patch: Record<string, unknown> }
 
-const TYPE_GLYPH: Record<DocumentType, string> = { BANK_INSTRUCTION: '✉', SALE_DEED: '§', APPROVED_PLAN: '▦', REVENUE_RECORD: '☷', TAX_RECEIPT: '₹', OCCUPATION_CERTIFICATE: '✓', SHAJRA_PLAN: '▦', WATER_BILL: '≋', MAGISTRATE_CERTIFICATE: '§', PATWARI_REPORT: '☷', OTHER: '▤' }
+const TYPE_GLYPH: Record<DocumentType, string> = { BANK_INSTRUCTION: '✉', SALE_DEED: '§', APPROVED_PLAN: '▦', REVENUE_RECORD: '☷', TAX_RECEIPT: '₹', OCCUPATION_CERTIFICATE: '✓', SHAJRA_PLAN: '▦', WATER_BILL: '≋', MAGISTRATE_CERTIFICATE: '§', PATWARI_REPORT: '☷', LAYOUT_PLAN: '▤', COMPLETION_CERTIFICATE: '✓', ELECTRICITY_BILL: '⚡', PROPERTY_TAX: '₹', REGISTRY_PAPERS: '§', OTHER: '▤' }
 const sizeLabel = (bytes: number) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
 export default function PropertyDocuments() {
@@ -160,7 +160,7 @@ export default function PropertyDocuments() {
   async function advance() {
     if (!a) return
     setMoving(true); setError(null)
-    try { await api.patch(`/assignments/${a.id}/status`, { status: 'INSPECTION' }); navigate(stepPath(2, a.id)) }
+    try { navigate(stepPath(2, a.id)) }
     catch (caught) { setError(errorMessage(caught)); setMoving(false) }
   }
 
@@ -244,11 +244,11 @@ export default function PropertyDocuments() {
         </section>
       </div>
 
-      <aside className="pd-aside"><ReadyCard title="Ready for inspection?" readiness={r} summary={r?.complete ? 'Everything is in order.' : r?.canProceed ? 'You can proceed, but some items are open.' : 'Documents are needed before the site visit.'}>
-        {a.status === 'INSPECTION' || STEP_OF_STATUS[a.status] > 2 ? <div className="pd-moved"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(Math.min(stepNow, 5), a.id)} className="pd-btn is-primary">Open next step →</Link></div>
+      <aside className="pd-aside"><ReadyCard title="Ready for the drafter?" readiness={r} summary={r?.complete ? 'Everything is in order.' : r?.canProceed ? 'You can proceed, but some items are open.' : 'Upload the property documents first.'}>
+        {STEP_OF_STATUS[a.status] > 1 ? <div className="pd-moved"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(Math.min(stepNow, 5), a.id)} className="pd-btn is-primary">Open next step →</Link></div>
           : !canEdit ? <p className="pd-muted">Only a valuer or admin can move this assignment forward.</p>
-          : confirming ? <div className="pd-confirm"><b>Continue with open items?</b><p>{todo.length ? `Still required: ${todo.map((i) => i.label).join(', ')}.` : 'Some recommended items are still open.'} You can add them later, but inspection will start without them.</p><div><button type="button" className="pd-btn is-ghost" onClick={() => setConfirming(false)}>Not yet</button><button type="button" className="pd-btn is-primary" disabled={moving} onClick={() => void advance()}>{moving ? 'Moving…' : 'Continue anyway'}</button></div></div>
-          : <button type="button" className="pd-btn is-primary is-block" disabled={!r?.canProceed || moving} onClick={() => (r?.complete ? void advance() : setConfirming(true))}>{moving ? 'Moving…' : r?.complete ? 'Continue to Site Inspection →' : 'Continue to Site Inspection…'}</button>}
+          : confirming ? <div className="pd-confirm"><b>Continue with open items?</b><p>{todo.length ? `Still required: ${todo.map((i) => i.label).join(', ')}.` : 'Some recommended items are still open.'} You can add them later, but the bank report will start without them.</p><div><button type="button" className="pd-btn is-ghost" onClick={() => setConfirming(false)}>Not yet</button><button type="button" className="pd-btn is-primary" disabled={moving} onClick={() => void advance()}>{moving ? 'Moving…' : 'Continue anyway'}</button></div></div>
+          : <button type="button" className="pd-btn is-primary is-block" disabled={!r?.canProceed || moving} onClick={() => (r?.complete ? void advance() : setConfirming(true))}>{moving ? 'Moving…' : r?.complete ? 'Continue to the workbench →' : 'Continue to the workbench…'}</button>}
         <Link to={`/assignments/${a.id}`} className="pd-save-exit">Save &amp; exit to assignment</Link>
       </ReadyCard></aside>
     </div>

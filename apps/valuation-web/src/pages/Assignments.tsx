@@ -16,6 +16,8 @@ interface AssignmentRow {
   bank: { name: string }
   property: { code: string; addressLine: string }
   assignedValuer: { fullName: string }
+  acknowledgedAt: string | null
+  billing?: { status: 'none' | 'unpaid' | 'part_paid' | 'paid'; amount: number; outstanding: number; code: string | null }
 }
 
 const isStatus = (value: string | null): value is AssignmentStatus => !!value && (ASSIGNMENT_STATUSES as readonly string[]).includes(value)
@@ -59,7 +61,7 @@ export default function Assignments() {
         return <article key={row.id}>
           <div className="cc-q-main"><div className="cc-q-top"><Link to={`/assignments/${row.id}`} className="cc-q-code">{row.code}</Link><span className="pd-pill is-type">{ASSIGNMENT_STATUS_LABELS[row.status]}</span>{row.priority !== 'NORMAL' && <span className={`pd-prio is-${row.priority.toLowerCase()} cc-prio`}>{ASSIGNMENT_PRIORITY_LABELS[row.priority]}</span>}</div>
             <b title={row.property.addressLine}>{row.property.addressLine}</b>
-            <small>{row.bank.name}{row.borrowerName ? ` · ${row.borrowerName}` : ''} · {row.assignedValuer.fullName}</small></div>
+            <small>{row.bank.name}{row.borrowerName ? ` · ${row.borrowerName}` : ''} · {row.assignedValuer.fullName}{row.billing && row.billing.status !== 'none' && <> · <b className={row.billing.status === 'paid' ? 'text-emerald-700' : 'text-amber-700'} title={`Bill ${row.billing.code ?? ''}`}>{row.billing.status === 'paid' ? 'paid' : row.billing.status === 'part_paid' ? `part paid · ₹${row.billing.outstanding.toLocaleString('en-IN')} due` : `unpaid · ₹${row.billing.outstanding.toLocaleString('en-IN')}`}</b></>}{!row.acknowledgedAt && !closed ? <> · <b title="The valuer has not opened the pop-up for this case yet">not seen yet</b></> : null}</small></div>
           <div className="cc-q-due">{closed ? <small>{formatDate(row.dueDate)}</small> : <><span className={`cc-due is-${due.tone}`}>{due.text}</span><small>due {formatDate(row.dueDate)}</small></>}</div>
           {next ? <Link to={next.to} className="pd-btn is-primary">{next.label} →</Link> : <Link to={`/assignments/${row.id}`} className="pd-btn is-ghost">Open</Link>}
         </article>

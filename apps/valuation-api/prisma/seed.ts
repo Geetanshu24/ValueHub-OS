@@ -1,4 +1,4 @@
-// Creates the first firm and admin so the API can be logged into.
+// Creates the first firm and admin so the API can be logged into, plus the default banks.
 // Usage: npm run db:seed (reads SEED_* from .env). Safe to re-run.
 import { randomBytes, scrypt as scryptCb } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -20,16 +20,25 @@ const passwordHash = `scrypt$${salt.toString('base64')}$${hash.toString('base64'
 
 const prisma = new PrismaClient();
 try {
+  let firmId: string;
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    console.log(`Admin ${email} already exists; nothing to do.`);
+    firmId = existing.firmId;
+    console.log(`Admin ${email} already exists; skipping firm and admin.`);
   } else {
     const firm = await prisma.firm.create({ data: { name: firmName } });
+    firmId = firm.id;
     await prisma.user.create({
-      data: { firmId: firm.id, email, fullName: 'Firm Admin', role: 'FIRM_ADMIN', passwordHash },
+      data: { firmId, email, fullName: 'Firm Admin', role: 'FIRM_ADMIN', passwordHash },
     });
     console.log(`Created firm "${firmName}" with admin ${email}.`);
   }
+
+  // The banks that have a report format built in, so the Bank list is never empty.
+  for (const name of ['Bank of India', 'Punjab National Bank', 'State Bank of India']) {
+    await prisma.bank.upsert({ where: { firmId_name: { firmId, name } }, update: {}, create: { firmId, name } });
+  }
+  console.log('Default banks ready: Bank of India, Punjab National Bank, State Bank of India.');
 } finally {
   await prisma.$disconnect();
 }

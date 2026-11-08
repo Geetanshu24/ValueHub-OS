@@ -10,12 +10,12 @@ export class AssignmentsController {
 
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() query: ListAssignmentsQuery) {
-    return this.assignments.list(user.firmId, query);
+    return this.assignments.list(user.firmId, query, user);
   }
 
   @Get(':id')
   get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.assignments.get(user.firmId, id);
+    return this.assignments.get(user.firmId, id, user);
   }
 
   @Get(':id/readiness')

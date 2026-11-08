@@ -6,6 +6,9 @@ import { StorageService } from '../../common/storage/storage.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { BANK_FORMATS, chooseFormat, type BankFormat } from './bank-formats.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
+import { compareFacts } from './site-compare.js';
+import { FIELD_OPTIONS } from './field-options.js';
 import { renderBoiPdf } from './boi-pdf.js';
 import { docxToDocument, fillDocx, resolveValues } from './docx-template.js';
 
@@ -21,13 +24,53 @@ export class BankReportService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // The format to fill, the values already known and which of them were suggested
   // from records. What the valuer saved always wins over a suggestion.
   async form(firmId: string, assignmentId: string, requested?: string) {
-    const { values, suggested, saved, format } = await this.merged(firmId, assignmentId, requested);
-    return { format: format.id, title: format.title, formats: BANK_FORMATS.map((f) => ({ id: f.id, label: f.label })), fields: format.fields.filter((f) => !f.hidden), values, suggested, saved };
+    const { values, suggested, saved, format, prefill } = await this.merged(firmId, assignmentId, requested);
+    // Answers saved earlier that the records (the workbench, the case) now say differently.
+    const updates = Object.fromEntries(Object.entries(prefill).filter(([key, value]) => saved && key in values && values[key].trim() !== '' && values[key] !== value && !suggested.includes(key)));
+    return { format: format.id, title: format.title, formats: BANK_FORMATS.map((f) => ({ id: f.id, label: f.label })), fields: format.fields.filter((f) => !f.hidden).map((f) => (FIELD_OPTIONS[f.key] ? { ...f, options: FIELD_OPTIONS[f.key] } : f)), values, suggested, saved, updates };
+  }
+
+  // As per documents against as per site, for the drafter to cross-check before finishing the report.
+  async compare(firmId: string, assignmentId: string) {
+    const merged = await this.merged(firmId, assignmentId);
+    const visit = await this.prisma.inspection.findFirst({
+      where: { assignmentId, firmId },
+      orderBy: { visitedAt: 'desc' },
+      select: { status: true, visitedAt: true, observations: true, inspector: { select: { fullName: true } }, measurements: { select: { label: true, fieldKey: true, areaSqm: true } } },
+    });
+    const observations = Object.fromEntries(Object.entries((visit?.observations ?? {}) as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '')]));
+    const rows = compareFacts(merged.facts, merged.documentFacts, { observations, measurements: (visit?.measurements ?? []).map((m) => ({ label: m.label, fieldKey: m.fieldKey, areaSqm: Number(m.areaSqm) })) });
+    return {
+      visit: visit ? { status: visit.status, visitedAt: visit.visitedAt, inspector: visit.inspector.fullName } : null,
+      rows,
+      summary: { match: rows.filter((r) => r.status === 'match').length, differs: rows.filter((r) => r.status === 'differs').length, missing: rows.filter((r) => r.status === 'document_only' || r.status === 'site_only').length },
+    };
+  }
+
+  async sendForChecking(firmId: string, actorId: string, assignmentId: string) {
+    const assignment = await this.prisma.assignment.findFirst({ where: { id: assignmentId, firmId }, select: { code: true, createdById: true, bank: { select: { name: true } } } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    const actor = await this.prisma.user.findUnique({ where: { id: actorId }, select: { fullName: true } });
+    await this.prisma.$transaction(async (tx) => {
+      if (assignment.createdById !== actorId) {
+        await this.notifications.notify(tx, {
+          firmId,
+          userId: assignment.createdById,
+          assignmentId,
+          kind: 'DRAFT_READY',
+          title: 'Draft ready to check',
+          body: `${assignment.code} · ${assignment.bank.name}. ${actor?.fullName ?? 'The drafter'} has finished the bank report draft.`,
+        });
+      }
+      await this.audit.record({ firmId, actorId, entityType: 'Assignment', entityId: assignmentId, action: 'bank_report.sent_for_check' }, tx);
+    });
+    return { sent: true };
   }
 
   async save(firmId: string, actor: Actor, assignmentId: string, incoming: Record<string, unknown>, requested?: string) {
@@ -120,14 +163,14 @@ export class BankReportService {
     const inspection = await this.prisma.inspection.findFirst({
       where: { assignmentId, firmId, status: { in: ['SUBMITTED', 'REVIEWED'] } },
       orderBy: { visitedAt: 'desc' },
-      select: { id: true, visitedAt: true, latitude: true, longitude: true },
+      select: { id: true, visitedAt: true, latitude: true, longitude: true, observations: true },
     });
     const valuation = await this.prisma.valuationVersion.findFirst({ where: { assignmentId, firmId }, orderBy: { versionNumber: 'desc' }, select: { totalValue: true, adoptedAreaSqm: true } });
     const documents = await this.prisma.document.findMany({
       where: { firmId, propertyId: assignment.property.id },
       orderBy: { uploadedAt: 'asc' },
       take: 60,
-      include: { fields: { select: { fieldKey: true, extractedValue: true, verifiedValue: true, state: true, confidence: true } } },
+      include: { fields: { select: { fieldKey: true, extractedValue: true, verifiedValue: true, state: true, confidence: true, useInReport: true, source: true } } },
     });
 
     const best = new Map<string, { value: string; rank: number }>();
@@ -138,7 +181,8 @@ export class BankReportService {
         const reviewed = field.state === 'VERIFIED' || field.state === 'CORRECTED';
         if (field.state === 'UNKNOWN') continue;
         const value = (reviewed ? field.verifiedValue ?? field.extractedValue : field.extractedValue).trim();
-        const rank = (reviewed ? 10 : 0) + Number(field.confidence ?? 0);
+        // A person's choice beats a review, a review beats a typed value, and a typed value beats text a machine read.
+        const rank = (field.useInReport ? 100 : 0) + (reviewed ? 10 : 0) + (field.source === 'MANUAL' ? 5 : 0) + Number(field.confidence ?? 0);
         if (!value) continue;
         if (!perDocument[field.fieldKey]) perDocument[field.fieldKey] = value;
         if (rank > (best.get(field.fieldKey)?.rank ?? -1)) best.set(field.fieldKey, { value, rank });
@@ -175,7 +219,7 @@ export class BankReportService {
         longitude: assignment.property.longitude === null ? null : Number(assignment.property.longitude),
         boundaries,
       },
-      inspection: inspection ? { visitedAt: inspection.visitedAt, latitude: inspection.latitude === null ? null : Number(inspection.latitude), longitude: inspection.longitude === null ? null : Number(inspection.longitude) } : null,
+      inspection: inspection ? { observations: Object.fromEntries(Object.entries((inspection.observations ?? {}) as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '')])), visitedAt: inspection.visitedAt, latitude: inspection.latitude === null ? null : Number(inspection.latitude), longitude: inspection.longitude === null ? null : Number(inspection.longitude) } : null,
       valuation: valuation ? { totalValue: Number(valuation.totalValue), adoptedAreaSqm: Number(valuation.adoptedAreaSqm) } : null,
       facts: Object.fromEntries([...best].map(([key, v]) => [key, v.value])),
       documents: documents
@@ -188,10 +232,12 @@ export class BankReportService {
     const savedValues = (savedForm?.values ?? {}) as Record<string, string>;
     const values = Object.fromEntries(Object.entries({ ...prefill, ...savedValues }).filter(([key]) => known.has(key)));
     const suggested = Object.keys(prefill).filter((key) => known.has(key) && !(key in savedValues));
+    const prefillKnown = Object.fromEntries(Object.entries(prefill).filter(([key]) => known.has(key)));
     return {
       format,
       values,
       suggested,
+      prefill: prefillKnown,
       saved: savedForm !== undefined,
       branchName: assignment.branch?.name ?? '',
       propertyClass: assignment.property.propertyClass,

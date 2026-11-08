@@ -17,6 +17,20 @@ export interface ObservationSection {
 
 export const OBSERVATION_SECTIONS: readonly ObservationSection[] = [
   {
+    id: 'identity',
+    title: 'Address & boundaries (as per site)',
+    hint: 'What you find on the ground, to be set against the documents',
+    fields: [
+      { key: 'site_address', label: 'Address as per site', type: 'textarea' },
+      { key: 'site_boundary_east', label: 'East side: who or what is there', type: 'text' },
+      { key: 'site_boundary_west', label: 'West side: who or what is there', type: 'text' },
+      { key: 'site_boundary_north', label: 'North side: who or what is there', type: 'text' },
+      { key: 'site_boundary_south', label: 'South side: who or what is there', type: 'text' },
+      { key: 'site_length_ft', label: 'Plot length', type: 'number', unit: 'ft' },
+      { key: 'site_breadth_ft', label: 'Plot breadth', type: 'number', unit: 'ft' },
+    ],
+  },
+  {
     id: 'use',
     title: 'Use & occupancy',
     hint: 'Who is using the property, and for what',
@@ -37,6 +51,9 @@ export const OBSERVATION_SECTIONS: readonly ObservationSection[] = [
       { key: 'quality', label: 'Quality of construction', type: 'select', options: ['Excellent', 'Good', 'Average', 'Poor'] },
       { key: 'condition', label: 'Present condition', type: 'select', options: ['New', 'Good', 'Fair', 'Needs repair', 'Dilapidated'] },
       { key: 'finishing', label: 'Finishing & fittings', type: 'text' },
+      { key: 'site_year_built', label: 'Year of construction (as seen or told)', type: 'text' },
+      { key: 'accommodation_ground', label: 'Accommodation on the ground floor', type: 'textarea' },
+      { key: 'accommodation_first', label: 'Accommodation on the first floor', type: 'textarea' },
     ],
   },
   {
@@ -49,6 +66,7 @@ export const OBSERVATION_SECTIONS: readonly ObservationSection[] = [
       { key: 'shape', label: 'Plot shape', type: 'select', options: ['Regular', 'Irregular', 'Corner plot', 'Triangular'] },
       { key: 'encroachment', label: 'Encroachment', type: 'select', options: ['None seen', 'Minor', 'Major'] },
       { key: 'flood_prone', label: 'Flood or waterlogging', type: 'select', options: ['No', 'Yes'] },
+      { key: 'road_widening', label: 'Road widening (existing or planned)', type: 'text' },
     ],
   },
   {
@@ -60,6 +78,7 @@ export const OBSERVATION_SECTIONS: readonly ObservationSection[] = [
       { key: 'electricity', label: 'Electricity', type: 'select', options: ['Available', 'Not available'] },
       { key: 'drainage', label: 'Drainage', type: 'select', options: ['Underground sewer', 'Septic tank', 'Open drain', 'None'] },
       { key: 'neighbourhood', label: 'Neighbourhood', type: 'select', options: ['Fully developed', 'Developing', 'Rural / outskirts'] },
+      { key: 'locality_quality', label: 'Nearby locality', type: 'select', options: ['High', 'Middle', 'Poor'] },
       { key: 'landmark', label: 'Nearest landmark', type: 'text' },
     ],
   },

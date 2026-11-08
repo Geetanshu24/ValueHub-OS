@@ -5,15 +5,15 @@ import { api, downloadFile } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
 
-interface FormField { key: string; label: string; section: string; default: string; vacant: boolean; long: boolean }
+interface FormField { key: string; label: string; section: string; default: string; vacant: boolean; long: boolean; options?: string[] }
 interface Issue { severity: 'warn' | 'info'; message: string }
 interface Suggestion { key: string; label: string; text: string; basis: string }
-interface Form { format: string; formats: { id: string; label: string }[]; title: string; fields: FormField[]; values: Record<string, string>; suggested: string[]; saved: boolean }
+interface Form { format: string; formats: { id: string; label: string }[]; title: string; fields: FormField[]; values: Record<string, string>; suggested: string[]; saved: boolean; updates: Record<string, string> }
 
 export default function BankReport() {
   const { id = '' } = useParams()
   const { user } = useAuth()
-  const canEdit = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER'
+  const canEdit = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER' || user?.role === 'DRAFTER'
   const [chosen, setChosen] = useState('')
   const query = chosen ? `?format=${chosen}` : ''
   const form = useFetch<Form>(`/assignments/${id}/bank-report${query}`)
@@ -28,13 +28,24 @@ export default function BankReport() {
   useEffect(() => { if (form.data) setValues(form.data.values) }, [form.data])
 
   const suggested = new Set(form.data?.suggested ?? [])
+  // Answers saved earlier that the workbench and the case records now say differently.
+  const updates = Object.entries(form.data?.updates ?? {}).filter(([key, value]) => values[key] !== value)
   const sections = Object.entries((form.data?.fields ?? []).reduce<Record<string, FormField[]>>((groups, f) => { (groups[f.section] ??= []).push(f); return groups }, {}))
   const set = (key: string, value: string) => { setValues((current) => ({ ...current, [key]: value })); setMessage(null) }
-  const field = (key: string, long = false, placeholder?: string) => {
+  const field = (key: string, long = false, placeholder?: string, options?: string[]) => {
     const props = { className: inputClass, value: values[key] ?? '', placeholder, disabled: !canEdit, onChange: (e: { target: { value: string } }) => set(key, e.target.value) }
+    // A saved or suggested answer that is not in the list stays selectable.
+    const current = values[key] ?? ''
+    const choices = options && current && !options.includes(current) ? [...options, current] : options
     return (
       <span className="bank-field">
-        {long ? <textarea rows={3} {...props} /> : <input {...props} />}
+        {choices ? (
+          <select className={inputClass} value={current} disabled={!canEdit} onChange={(e) => set(key, e.target.value)}>
+            <option value="">{placeholder ? `Default: ${placeholder}` : 'Select…'}</option>
+            {choices.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ) : long ? <textarea rows={3} {...props} /> : <input {...props} />}
+        {form.data?.updates[key] && values[key] !== form.data.updates[key] && canEdit && <small className="bank-update">Records now say: “{form.data.updates[key].length > 90 ? `${form.data.updates[key].slice(0, 90)}…` : form.data.updates[key]}” <button type="button" onClick={() => set(key, form.data!.updates[key])}>Use this</button></small>}
         {suggested.has(key) && values[key] === form.data?.values[key] && <small className="pd-muted">filled from records, please check</small>}
       </span>
     )
@@ -46,6 +57,15 @@ export default function BankReport() {
       await api.put(`/assignments/${id}/bank-report${query}`, { values })
       setMessage('Saved')
       form.reload()
+    } catch (caught) { setError(errorMessage(caught)) } finally { setBusy(null) }
+  }
+  // Saves what is on screen, then tells whoever gave out the case that the draft is ready to check.
+  const sendForChecking = async () => {
+    setBusy('ready'); setError(null)
+    try {
+      await api.put(`/assignments/${id}/bank-report${query}`, { values })
+      await api.post(`/assignments/${id}/bank-report/ready`, {})
+      setMessage('Sent for checking')
     } catch (caught) { setError(errorMessage(caught)) } finally { setBusy(null) }
   }
   const download = async (kind: 'docx' | 'pdf') => {
@@ -88,6 +108,9 @@ export default function BankReport() {
         {canEdit && <button type="button" className={buttonClass} disabled={busy !== null} onClick={() => void save()}>{busy === 'save' ? 'Saving…' : 'Save answers'}</button>}
         <button type="button" className={ghostButtonClass} disabled={busy !== null} onClick={() => void download('docx')}>{busy === 'docx' ? 'Preparing…' : 'Download Word (.docx)'}</button>
         <button type="button" className={ghostButtonClass} disabled={busy !== null} onClick={() => void download('pdf')}>{busy === 'pdf' ? 'Preparing…' : 'Download PDF'}</button>
+        {canEdit && updates.length > 0 && <button type="button" className={ghostButtonClass} onClick={() => { for (const [key, value] of updates) set(key, value) }}>Update {updates.length} answer{updates.length === 1 ? '' : 's'} from the workbench</button>}
+        {canEdit && <button type="button" className={ghostButtonClass} disabled={busy !== null} onClick={() => void sendForChecking()}>{busy === 'ready' ? 'Sending…' : 'Send for checking'}</button>}
+        {(user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER') && <Link to={`/assignments/${id}/check`} className={ghostButtonClass}>Next: check &amp; send →</Link>}
         {message && <span className="pd-muted">{message}</span>}
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -122,7 +145,7 @@ export default function BankReport() {
             {fields.map((f) => (
               <label key={f.key} className="bank-row">
                 <span className="bank-label">{f.label}</span>
-                {field(f.key, f.long, f.default || (f.vacant ? 'Vacant Plot' : undefined))}
+                {field(f.key, f.long, f.default || (f.vacant ? 'Vacant Plot' : undefined), f.options)}
               </label>
             ))}
           </div>

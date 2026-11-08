@@ -27,6 +27,10 @@ export class CreateAssignmentDto {
   @IsOptional() @IsUUID() branchId?: string;
   @IsUUID() propertyId!: string;
   @IsUUID() assignedValuerId!: string;
+  // The client who asked for the work, and who the valuer hands the case to.
+  @IsOptional() @IsString() @MaxLength(30) clientPhone?: string;
+  @IsOptional() @IsUUID() assignedDrafterId?: string;
+  @IsOptional() @IsUUID() assignedInspectorId?: string;
 
   @IsString()
   @MinLength(2)
@@ -85,6 +89,9 @@ export class UpdateAssignmentDto {
   @IsOptional() @IsString() @MaxLength(200) borrowerName?: string;
   // Reallocation; FIRM_ADMIN only.
   @IsOptional() @IsUUID() assignedValuerId?: string;
+  @IsOptional() @IsString() @MaxLength(30) clientPhone?: string;
+  @IsOptional() @IsUUID() assignedDrafterId?: string;
+  @IsOptional() @IsUUID() assignedInspectorId?: string;
 
   @IsOptional()
   @Type(() => Number)

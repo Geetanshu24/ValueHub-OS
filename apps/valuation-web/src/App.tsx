@@ -19,6 +19,9 @@ import InspectionWorkspace from './pages/InspectionWorkspace.tsx'
 import Login from './pages/Login.tsx'
 import RevisionDesk from './pages/RevisionDesk.tsx'
 import BankReport from './pages/BankReport.tsx'
+import DraftWorkbench from './pages/DraftWorkbench.tsx'
+import Compare from './pages/Compare.tsx'
+import ValuerCheck from './pages/ValuerCheck.tsx'
 import ReportStudio from './pages/ReportStudio.tsx'
 import ValuationWorkspace from './pages/ValuationWorkspace.tsx'
 import ResetPassword from './pages/ResetPassword.tsx'
@@ -42,6 +45,9 @@ export default function App() {
         <Route path="assignments/:id/documents" element={<PropertyDocuments />} />
         <Route path="assignments/:id/inspection" element={<InspectionStep />} />
         <Route path="assignments/:id/valuation" element={<ValuationStep />} />
+        <Route path="assignments/:id/workbench" element={<DraftWorkbench />} />
+        <Route path="assignments/:id/compare" element={<Compare />} />
+        <Route path="assignments/:id/check" element={<ValuerCheck />} />
         <Route path="assignments/:id/bank-report" element={<BankReport />} />
         <Route path="assignments/:id/review" element={<QualityReview />} />
         <Route path="assignments/:id/submission" element={<SubmissionStep />} />

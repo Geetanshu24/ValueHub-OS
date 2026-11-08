@@ -105,6 +105,11 @@ export default function InspectionStep() {
     try { await action(); if (ok) setNotice(ok); reloadAll() } catch (caught) { setError(errorMessage(caught)) } finally { setBusy(false) }
   }
 
+  // An inspector given the case starts their own visit; nobody has to schedule it for them.
+  const startMine = () => void run(async () => {
+    const made = await api.post<{ id: string }>(`/assignments/${id}/inspections`, { inspectorId: user!.id, visitedAt: new Date().toISOString() })
+    setPick(made.id)
+  }, 'Visit started. Fill in what you find on site.')
   const schedule = (event: FormEvent) => {
     event.preventDefault()
     void run(async () => {
@@ -183,7 +188,7 @@ export default function InspectionStep() {
   async function advance() {
     if (!a) return
     setBusy(true); setError(null)
-    try { if (a.status === 'DOCUMENTS') await api.patch(`/assignments/${a.id}/status`, { status: 'INSPECTION' }); await api.patch(`/assignments/${a.id}/status`, { status: 'VALUATION' }); navigate(stepPath(3, a.id)) }
+    try { navigate(stepPath(4, a.id)) }
     catch (caught) { setError(errorMessage(caught)); setBusy(false) }
   }
 
@@ -199,7 +204,7 @@ export default function InspectionStep() {
   if (!a) return <div className="pd-shell"><p className="pd-muted">Loading assignment…</p></div>
 
   return <div className="pd-shell">
-    <StepHeader a={a} here={2} eyebrow="STEP 3 · SITE INSPECTION" title="Site Inspection" subtitle="Visit the property, measure it, photograph it and record what you see. Differences from the documents are flagged, never overwritten." />
+    <StepHeader a={a} here={3} eyebrow="STEP 4 · SITE INSPECTION" title="Site Inspection" subtitle="Visit the property, measure it, photograph it and record what you see. Differences from the documents are flagged, never overwritten." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
     <ErrorText message={error ?? assignment.error ?? context.error ?? visits.error ?? discrepancies.error} />
 
@@ -212,7 +217,7 @@ export default function InspectionStep() {
             <label>Date &amp; time<input type="datetime-local" required value={plan.visitedAt} onChange={(e) => setPlan({ ...plan, visitedAt: e.target.value })} /></label>
             <div><button type="button" className="pd-btn is-ghost" onClick={() => setScheduling(false)}>Cancel</button><button className="pd-btn is-primary" disabled={busy}>Schedule</button></div>
           </form>}
-          {list.length === 0 ? <div className="pd-empty"><b>No visit scheduled yet</b><p>{canPlan ? 'Schedule the first site visit to begin.' : 'A valuer will schedule the visit.'}</p></div> : <div className="in-visits">{list.map((v) => <button key={v.id} type="button" className={`in-visit ${visit?.id === v.id ? 'is-on' : ''}`} onClick={() => setPick(v.id)}><b>{when(v.visitedAt)}</b><span>{v.inspector.fullName}</span><em className={`pd-pill is-${v.status.toLowerCase()}`}>{STAGES.find(([s]) => s === v.status)?.[1]}</em></button>)}</div>}
+          {list.length === 0 ? <div className="pd-empty"><b>No visit yet</b><p>{canPlan ? 'Schedule the first site visit to begin.' : user?.role === 'INSPECTOR' ? 'Start your visit when you reach the property.' : 'The inspector will start the visit.'}</p>{user?.role === 'INSPECTOR' && <button type="button" className="pd-btn is-primary" disabled={busy} onClick={startMine}>Start my site visit</button>}</div> : <div className="in-visits">{list.map((v) => <button key={v.id} type="button" className={`in-visit ${visit?.id === v.id ? 'is-on' : ''}`} onClick={() => setPick(v.id)}><b>{when(v.visitedAt)}</b><span>{v.inspector.fullName}</span><em className={`pd-pill is-${v.status.toLowerCase()}`}>{STAGES.find(([s]) => s === v.status)?.[1]}</em></button>)}</div>}
         </section>
 
         {visit && <>
@@ -298,9 +303,9 @@ export default function InspectionStep() {
           ? <div className="pd-confirm"><b>Submit this visit?</b><p>It locks the measurements, photos and notes. Any area that differs from the documents is flagged for a decision.{r?.items.some((i) => i.state === 'warn') ? ' Some guidance items are still open.' : ''}</p><div><button type="button" className="pd-btn is-ghost" onClick={() => setConfirmSubmit(false)}>Not yet</button><button type="button" className="pd-btn is-primary" disabled={busy} onClick={() => void submitVisit()}>{busy ? 'Submitting…' : 'Submit visit'}</button></div></div>
           : <button type="button" className="pd-btn is-primary is-block" disabled={visit.measurements.length === 0 || unconfirmedCaptions > 0 || busy} onClick={() => setConfirmSubmit(true)}>{visit.measurements.length === 0 ? 'Add a measurement to submit' : unconfirmedCaptions > 0 ? `Confirm ${unconfirmedCaptions} caption${unconfirmedCaptions === 1 ? '' : 's'} to submit` : 'Submit inspection…'}</button>)}
         {visit?.status === 'SUBMITTED' && canReview && <button type="button" className="pd-btn is-block in-gap" disabled={busy} onClick={() => void run(() => api.post(`/inspections/${visit.id}/review`, {}), 'Marked field-reviewed.')}>Mark field-reviewed</button>}
-        {a.status === 'INSPECTION' || a.status === 'DOCUMENTS' ? (canPlan ? <button type="button" className="pd-btn is-primary is-block in-gap" disabled={!r?.canProceed || busy} onClick={() => void advance()}>{r?.canProceed ? (pending.length ? `Continue to Valuation (${pending.length} difference${pending.length === 1 ? '' : 's'} open)` : 'Continue to Valuation →') : 'Continue to Valuation'}</button> : <p className="pd-muted in-gap">Only a valuer or admin can move this assignment forward.</p>)
-          : stepNow > 2 ? <div className="pd-moved in-gap"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(Math.min(stepNow, 5), a.id)} className="pd-btn is-primary">Open next step →</Link></div> : null}
-        <Link to={stepPath(1, a.id)} className="pd-save-exit">← Back to Property &amp; Documents</Link>
+        {a.status === 'INSPECTION' || a.status === 'DOCUMENTS' ? (canPlan ? <button type="button" className="pd-btn is-primary is-block in-gap" disabled={!r?.canProceed || busy} onClick={() => void advance()}>{r?.canProceed ? (pending.length ? `Continue to Compare (${pending.length} difference${pending.length === 1 ? '' : 's'} open)` : 'Continue to Compare →') : 'Continue to Compare'}</button> : <p className="pd-muted in-gap">Submit your inspection. The drafter takes it from here.</p>)
+          : stepNow > 3 ? <div className="pd-moved in-gap"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(Math.min(stepNow, 5), a.id)} className="pd-btn is-primary">Open next step →</Link></div> : null}
+        <Link to={`/assignments/${a.id}`} className="pd-save-exit">← Back to the case</Link>
       </ReadyCard></aside>
     </div>
 

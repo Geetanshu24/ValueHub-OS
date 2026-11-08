@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 
-// The sign-in frame: a brand panel with the six workflow steps, beside the form.
+// The sign-in frame: a brand panel with the seven workflow steps, beside the form.
 export default function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
-  const steps = ['Assignment intake', 'Property & documents', 'Site inspection', 'Valuation workings', 'Quality review', 'Approval & submission']
+  const steps = ['Assignment intake', 'Property & documents', 'Drafter workbench', 'Site inspection', 'Compare', 'Bank report', 'Check & send']
   return (
     <div className="auth">
       <aside className="auth-brand">

@@ -12,7 +12,9 @@ import { unmetGates } from './assignment-gates.js';
 import { AREA_FIELD_KEYS, MIN_OBSERVATIONS, MIN_PHOTOS, countObservations } from '@value-hub/valuation-shared';
 import { assessInspectionReadiness, assessReadiness, assessReviewReadiness, assessSubmissionReadiness } from './readiness.js';
 import { MailService } from '../../common/mail/mail.service.js';
+import { seenBy, withBilling } from './billing.js';
 import { IdsService } from '../ids/ids.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import type { CreateAssignmentDto, ListAssignmentsQuery, UpdateAssignmentDto } from './assignments.dto.js';
 
 const assignmentSelect = {
@@ -31,9 +33,16 @@ const assignmentSelect = {
   fee: true,
   status: true,
   bank: { select: { id: true, name: true } },
-  branch: { select: { id: true, name: true } },
+  branch: { select: { id: true, name: true, city: true, district: true, state: true } },
   property: { select: { id: true, code: true, addressLine: true, propertyClass: true } },
   assignedValuer: { select: { id: true, fullName: true } },
+  assignedAt: true,
+  acknowledgedAt: true,
+  clientPhone: true,
+  reportSubmittedAt: true,
+  invoices: { where: { status: { not: 'CANCELLED' } }, select: { code: true, amount: true, payments: { select: { amount: true, voidedAt: true } } } },
+  assignedDrafter: { select: { id: true, fullName: true } },
+  assignedInspector: { select: { id: true, fullName: true } },
 } satisfies Prisma.AssignmentSelect;
 
 // No further work is due once an assignment reaches one of these.
@@ -47,12 +56,16 @@ export class AssignmentsService {
     private readonly ids: IdsService,
     private readonly audit: AuditService,
     private readonly mail: MailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
-  async list(firmId: string, query: ListAssignmentsQuery): Promise<Paginated<unknown>> {
+  async list(firmId: string, query: ListAssignmentsQuery, viewer?: { userId: string; role: string }): Promise<Paginated<unknown>> {
     const q = query.q?.trim();
     const where: Prisma.AssignmentWhereInput = {
       firmId,
+      // A drafter or inspector sees only the cases given to them.
+      ...(viewer?.role === 'DRAFTER' && { assignedDrafterId: viewer.userId }),
+      ...(viewer?.role === 'INSPECTOR' && { assignedInspectorId: viewer.userId }),
       ...(query.status && { status: query.status }),
       ...(query.bankId && { bankId: query.bankId }),
       ...(query.propertyId && { propertyId: query.propertyId }),
@@ -77,7 +90,7 @@ export class AssignmentsService {
       }),
       this.prisma.assignment.count({ where }),
     ]);
-    return { items, total, page: query.page, pageSize: query.pageSize };
+    return { items: items.map((row) => seenBy(viewer, withBilling(row))), total, page: query.page, pageSize: query.pageSize };
   }
 
   // The most specific fee rule in force on the valuation date, if the firm has
@@ -93,10 +106,10 @@ export class AssignmentsService {
     return best ? Number(best.amount) : undefined;
   }
 
-  async get(firmId: string, id: string) {
+  async get(firmId: string, id: string, viewer?: { userId: string; role: string }) {
     const assignment = await this.prisma.assignment.findFirst({ where: { id, firmId }, select: assignmentSelect });
-    if (!assignment) throw new NotFoundException('Assignment not found');
-    return assignment;
+    if (!assignment || (viewer?.role === 'DRAFTER' && assignment.assignedDrafter?.id !== viewer.userId) || (viewer?.role === 'INSPECTOR' && assignment.assignedInspector?.id !== viewer.userId)) throw new NotFoundException('Assignment not found');
+    return seenBy(viewer, withBilling(assignment));
   }
 
   // How ready the property file is for site inspection. Documents belong to
@@ -279,6 +292,7 @@ export class AssignmentsService {
     if (!branch) throw new BadRequestException('Branch does not belong to this bank');
     if (!property) throw new BadRequestException('Unknown property');
     if (!valuer) throw new BadRequestException('Assigned valuer must be an active valuer in this firm');
+    await this.requireTeam(firmId, dto);
     if (dto.reusedFromId) {
       const earlier = await this.prisma.assignment.findFirst({ where: { id: dto.reusedFromId, firmId }, select: { propertyId: true } });
       if (!earlier) throw new BadRequestException('Unknown assignment to reuse');
@@ -297,6 +311,11 @@ export class AssignmentsService {
           branchId: dto.branchId,
           propertyId: dto.propertyId,
           assignedValuerId: dto.assignedValuerId,
+          // Giving a case to yourself needs no pop-up.
+          acknowledgedAt: dto.assignedValuerId === actorId ? new Date() : undefined,
+          clientPhone: dto.clientPhone?.trim() || undefined,
+          assignedDrafterId: dto.assignedDrafterId,
+          assignedInspectorId: dto.assignedInspectorId,
           createdById: actorId,
           purpose: dto.purpose,
           scope: dto.scope,
@@ -315,7 +334,50 @@ export class AssignmentsService {
         { firmId, actorId, entityType: 'Assignment', entityId: assignment.id, action: 'assignment.created', metadata: { code, intakeSource: dto.intakeSource ?? 'DASHBOARD', ...(dto.reusedFromId && { reusedFromId: dto.reusedFromId }) } },
         tx,
       );
+      if (dto.assignedValuerId !== actorId) {
+        await this.notifyAssigned(tx, firmId, actorId, 'ASSIGNED', assignment, assignment.assignedValuer.id);
+      }
+      // The drafter and the inspector see the case the moment it is saved.
+      for (const [person, role] of [[dto.assignedDrafterId, 'drafter'], [dto.assignedInspectorId, 'site inspector']] as const) {
+        if (person && person !== actorId) await this.notifyAssigned(tx, firmId, actorId, 'ASSIGNED', assignment, person, role);
+      }
       return assignment;
+    });
+  }
+
+  // The drafter must be a drafter; the site inspector an inspector (or a valuer who also goes to site).
+  private async requireTeam(firmId: string, dto: { assignedDrafterId?: string; assignedInspectorId?: string }) {
+    if (dto.assignedDrafterId) {
+      const drafter = await this.prisma.user.findFirst({ where: { id: dto.assignedDrafterId, firmId, isActive: true, role: 'DRAFTER' }, select: { id: true } });
+      if (!drafter) throw new BadRequestException('The drafter must be an active drafter in this firm');
+    }
+    if (dto.assignedInspectorId) {
+      const inspector = await this.prisma.user.findFirst({ where: { id: dto.assignedInspectorId, firmId, isActive: true, role: { in: ['INSPECTOR', 'VALUER'] } }, select: { id: true } });
+      if (!inspector) throw new BadRequestException('The site inspector must be an active inspector in this firm');
+    }
+  }
+
+  // The pop-up the new valuer sees on their next screen; the admin's name is on it so they know who to ask.
+  private async notifyAssigned(
+    tx: Prisma.TransactionClient,
+    firmId: string,
+    actorId: string,
+    kind: 'ASSIGNED' | 'REASSIGNED',
+    assignment: { id: string; code: string; purpose: string; bank: { name: string } },
+    userId: string,
+    asRole?: string,
+  ) {
+    const actor = await tx.user.findUnique({ where: { id: actorId }, select: { fullName: true } });
+    await this.notifications.notifyAssigned(tx, {
+      firmId,
+      userId,
+      asRole,
+      assignmentId: assignment.id,
+      kind,
+      code: assignment.code,
+      bankName: assignment.bank.name,
+      purpose: assignment.purpose,
+      assignedByName: actor?.fullName ?? 'the firm admin',
     });
   }
 
@@ -366,7 +428,7 @@ export class AssignmentsService {
   async update(firmId: string, actor: { userId: string; role: string }, id: string, dto: UpdateAssignmentDto) {
     const current = await this.prisma.assignment.findFirst({
       where: { id, firmId },
-      select: { status: true, bankId: true, assignedValuerId: true, valuationDate: true, dueDate: true },
+      select: { status: true, bankId: true, assignedValuerId: true, assignedDrafterId: true, assignedInspectorId: true, valuationDate: true, dueDate: true },
     });
     if (!current) throw new NotFoundException('Assignment not found');
     if (current.status === 'CLOSED' || current.status === 'CANCELLED') {
@@ -393,6 +455,8 @@ export class AssignmentsService {
       if (!valuer) throw new BadRequestException('Assigned valuer must be an active valuer in this firm');
     }
 
+    await this.requireTeam(firmId, dto);
+    const reallocated = !!dto.assignedValuerId && dto.assignedValuerId !== current.assignedValuerId;
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.assignment.update({
         where: { id },
@@ -405,6 +469,10 @@ export class AssignmentsService {
           priority: dto.priority,
           borrowerName: dto.borrowerName?.trim() || undefined,
           assignedValuerId: dto.assignedValuerId,
+          clientPhone: dto.clientPhone?.trim() || undefined,
+          assignedDrafterId: dto.assignedDrafterId,
+          assignedInspectorId: dto.assignedInspectorId,
+          ...(reallocated && { assignedAt: new Date(), acknowledgedAt: dto.assignedValuerId === actor.userId ? new Date() : null }),
           fee: dto.fee,
         },
         select: assignmentSelect,
@@ -420,6 +488,15 @@ export class AssignmentsService {
         },
         tx,
       );
+      if (reallocated && dto.assignedValuerId !== actor.userId) {
+        await this.notifyAssigned(tx, firmId, actor.userId, 'REASSIGNED', updated, updated.assignedValuer.id);
+      }
+      if (dto.assignedDrafterId && dto.assignedDrafterId !== current.assignedDrafterId && dto.assignedDrafterId !== actor.userId) {
+        await this.notifyAssigned(tx, firmId, actor.userId, 'ASSIGNED', updated, dto.assignedDrafterId, 'drafter');
+      }
+      if (dto.assignedInspectorId && dto.assignedInspectorId !== current.assignedInspectorId && dto.assignedInspectorId !== actor.userId) {
+        await this.notifyAssigned(tx, firmId, actor.userId, 'ASSIGNED', updated, dto.assignedInspectorId, 'site inspector');
+      }
       return updated;
     });
   }

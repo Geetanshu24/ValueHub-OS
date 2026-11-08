@@ -37,14 +37,14 @@ export class InspectionsController {
     return this.inspections.calendar(user, query);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'INSPECTOR')
   @Post('assignments/:assignmentId/inspections')
   schedule(
     @CurrentUser() user: AuthUser,
     @Param('assignmentId', ParseUUIDPipe) assignmentId: string,
     @Body() dto: ScheduleInspectionDto,
   ) {
-    return this.inspections.schedule(user.firmId, user.userId, assignmentId, dto);
+    return this.inspections.schedule(user.firmId, user.userId, assignmentId, dto, user.role);
   }
 
   @Get('assignments/:assignmentId/inspections')

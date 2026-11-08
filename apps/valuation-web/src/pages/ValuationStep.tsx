@@ -132,7 +132,7 @@ export default function ValuationStep() {
   const verify = (compId: string, verified: boolean) => run(async () => { await api.patch(`/comparables/${compId}/verify`, { verified }); if (!verified) setS((cur) => ({ ...cur, cited: cur.cited.filter((x) => x !== compId) })) })
   async function advance() {
     setBusy(true); setError(null)
-    try { await api.patch(`/assignments/${id}/status`, { status: 'QUALITY_REVIEW' }); navigate(stepPath(4, id)) } catch (caught) { setError(errorMessage(caught)); setBusy(false) }
+    try { navigate(stepPath(4, id)) } catch (caught) { setError(errorMessage(caught)); setBusy(false) }
   }
 
   const age = ctx?.site?.observations?.age_years ?? ''
@@ -319,13 +319,13 @@ export default function ValuationStep() {
         </section>
       </div>
 
-      <aside className="pd-aside"><ReadyCard title="Ready for quality review?" readiness={r} summary={!r ? '' : r.canProceed ? 'You can move to quality review.' : 'Send a valuation for review and clear any open differences.'}>
+      <aside className="pd-aside"><ReadyCard title="Ready for the bank report?" readiness={r} summary={!r ? '' : r.canProceed ? 'You can move to the bank report.' : 'Send a valuation for review and clear any open differences.'}>
         {editable && <button type="button" className="pd-btn is-primary is-block" disabled={busy || !calc || (list.length > 0 && s.changeReason.trim().length < 10)} onClick={() => void saveDraft()}>{busy ? 'Saving…' : list.length > 0 ? 'Save as new version' : 'Save draft'}</button>}
         {editable && !calc && <p className="pd-muted in-gap">{problems.length ? `${problems.length} thing${problems.length === 1 ? '' : 's'} left to complete in the workings.` : 'Complete the workings to save.'}</p>}
         {editable && calc && list.length > 0 && s.changeReason.trim().length < 10 && <p className="pd-muted in-gap">Say what changed (at least 10 characters) to save a new version.</p>}
         {latest?.status === 'DRAFT' && canDraft && <button type="button" className="pd-btn is-block in-gap" disabled={busy} onClick={() => void move(latest.id, 'submit-for-review')}>Send version {latest.versionNumber} for review</button>}
-        {a.status === 'VALUATION' || a.status === 'REVISION' ? (canDraft ? <button type="button" className="pd-btn is-primary is-block in-gap" disabled={!r?.canProceed || busy} onClick={() => void advance()}>Continue to Quality Review →</button> : <p className="pd-muted in-gap">Only a valuer or admin can move this assignment forward.</p>)
-          : stepNow > 3 ? <div className="pd-moved in-gap"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(Math.min(stepNow, 5), a.id)} className="pd-btn is-primary">Open next step →</Link></div> : null}
+        {a.status === 'VALUATION' || a.status === 'REVISION' ? (canDraft ? <button type="button" className="pd-btn is-primary is-block in-gap" disabled={busy} onClick={() => void advance()}>Continue to Bank Report →</button> : <p className="pd-muted in-gap">Only a valuer or admin can move this assignment forward.</p>)
+          : stepNow > 3 ? <div className="pd-moved in-gap"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(4, a.id)} className="pd-btn is-primary">Open next step →</Link></div> : null}
         <Link to={stepPath(2, a.id)} className="pd-save-exit">← Back to Site Inspection</Link>
       </ReadyCard></aside>
     </div>

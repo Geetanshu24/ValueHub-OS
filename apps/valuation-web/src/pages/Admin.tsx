@@ -17,7 +17,7 @@ interface UserRow {
 interface BankRow {
   id: string
   name: string
-  branches: { id: string; name: string; city: string | null }[]
+  branches: { id: string; name: string; city: string | null; district: string | null; state: string | null }[]
 }
 interface AuditRow {
   id: string
@@ -135,12 +135,13 @@ function Banks() {
         <Card key={bank.id} title={bank.name}>
           <div className="mb-2 flex gap-2">
             <button type="button" className={ghostButtonClass} onClick={() => { const next = window.prompt('Rename bank', bank.name)?.trim(); if (next) void run(() => api.patch(`/banks/${bank.id}`, { name: next })) }}>Rename</button>
-            <button type="button" className={ghostButtonClass} onClick={() => { const branch = window.prompt('Branch name')?.trim(); if (branch) void run(() => api.post(`/banks/${bank.id}/branches`, { name: branch })) }}>Add branch</button>
+            <button type="button" className={ghostButtonClass} onClick={() => { const branch = window.prompt('Branch name')?.trim(); if (!branch) return; const city = window.prompt('City (optional)')?.trim(); const district = window.prompt('District (optional)')?.trim(); const state = window.prompt('State (optional)')?.trim(); void run(() => api.post(`/banks/${bank.id}/branches`, { name: branch, ...(city && { city }), ...(district && { district }), ...(state && { state }) })) }}>Add branch</button>
           </div>
           {bank.branches.length === 0 && <p className="text-sm text-ink-soft">No branches yet.</p>}
           {bank.branches.map((branch) => (
             <div key={branch.id} className="flex items-center justify-between border-t border-slate-100 py-1 text-sm">
-              <span>{branch.name}{branch.city ? ` · ${branch.city}` : ''}</span>
+              <span>{branch.name}{[branch.city, branch.district, branch.state].filter(Boolean).length ? ` · ${[branch.city, branch.district, branch.state].filter(Boolean).join(', ')}` : ''}</span>
+              <button type="button" className={ghostButtonClass} onClick={() => { const city = window.prompt('City', branch.city ?? '')?.trim(); if (city === undefined) return; const district = window.prompt('District', branch.district ?? '')?.trim(); const state = window.prompt('State', branch.state ?? '')?.trim(); void run(() => api.patch(`/banks/${bank.id}/branches/${branch.id}`, { city, district, state })) }}>Set location</button>
               <button type="button" className={ghostButtonClass} onClick={() => { const email = window.prompt('Branch contact email')?.trim(); if (email) void run(() => api.patch(`/banks/${bank.id}/branches/${branch.id}`, { contactEmail: email })) }}>Set contact email</button>
             </div>
           ))}
