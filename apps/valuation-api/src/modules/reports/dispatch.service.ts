@@ -1,12 +1,14 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { formatInvoiceCode } from '@value-hub/valuation-shared';
+import { factLabel, formatInvoiceCode } from '@value-hub/valuation-shared';
 import { AuditService } from '../../common/audit/audit.service.js';
+import { StorageService } from '../../common/storage/storage.service.js';
 import { MailService } from '../../common/mail/mail.service.js';
 import { relaxChecks } from '../../common/relax-checks.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AccountsService } from '../accounts/accounts.service.js';
 import { fromPaise, outstandingPaise, paidPaise } from '../accounts/money.js';
 import { IdsService } from '../ids/ids.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { BankReportService } from './bank-report.service.js';
 
 // What the valuer ticks before approving the report: the final answer in the bank's format, next to
@@ -36,12 +38,14 @@ export class DispatchService {
     private readonly ids: IdsService,
     private readonly bankReport: BankReportService,
     private readonly accounts: AccountsService,
+    private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
 
   async state(firmId: string, assignmentId: string) {
     const merged = await this.bankReport.merged(firmId, assignmentId);
     const compare = await this.bankReport.compare(firmId, assignmentId);
-    const [checks, comparables, assignment, sends] = await Promise.all([
+    const [checks, comparables, assignment, sends, rework, finalReport] = await Promise.all([
       this.prisma.reportCheck.findMany({ where: { assignmentId, firmId } }),
       this.prisma.marketComparable.findMany({ where: { assignmentId, firmId }, orderBy: { observedOn: 'desc' }, take: 20 }),
       this.prisma.assignment.findFirstOrThrow({
@@ -54,6 +58,8 @@ export class DispatchService {
         },
       }),
       this.prisma.reportSend.findMany({ where: { assignmentId, firmId }, orderBy: { sentAt: 'desc' }, take: 50 }),
+      this.prisma.reworkRequest.findMany({ where: { assignmentId, firmId }, orderBy: { createdAt: 'desc' }, take: 20 }),
+      this.prisma.finalReport.findFirst({ where: { assignmentId, firmId }, orderBy: { revision: 'desc' } }),
     ]);
     const byKey = new Map(checks.map((c) => [c.itemKey, c]));
     const compareRow = (key?: string) => compare.rows.find((r) => r.key === key);
@@ -87,6 +93,10 @@ export class DispatchService {
         summary: `${comparables.length} comparable${comparables.length === 1 ? '' : 's'}, ${verified} verified`,
       },
       allChecked,
+      finalReport: finalReport ? { id: finalReport.id, reportNumber: finalReport.reportNumber, revision: finalReport.revision, approvedAt: finalReport.approvedAt, sha256: finalReport.sha256, fileName: finalReport.fileName, signature: finalReport.signature } : null,
+      rework: rework.map((r) => ({ id: r.id, kind: r.kind, reason: r.reason, dueDate: r.dueDate, revision: r.revision, createdAt: r.createdAt, resolvedAt: r.resolvedAt })),
+      openDifferences: compare.summary.open,
+      conflicts: merged.conflicts.map((key) => factLabel(key)),
       submitted: assignment.reportSubmittedAt ? { at: assignment.reportSubmittedAt, by: submittedBy?.fullName ?? null } : null,
       billing: invoice
         ? { id: invoice.id, code: invoice.code, amount: Number(invoice.amount), dueOn: invoice.dueOn, status: invoice.status, paid: fromPaise(paidPaise(invoice.payments)), outstanding: fromPaise(outstandingPaise(invoice.amount, invoice.payments)) }
@@ -94,6 +104,56 @@ export class DispatchService {
       contact: assignment.branch ? { branch: assignment.branch.name, name: assignment.branch.contactName, email: assignment.branch.contactEmail, phone: assignment.branch.contactPhone } : null,
       sends: sends.map((s) => ({ id: s.id, channel: s.channel, recipient: s.recipient, note: s.note, format: s.format, deliveryStatus: s.deliveryStatus, deliveryError: s.deliveryError, sentAt: s.sentAt })),
     };
+  }
+
+  // The valuer sends work back before approving: to the drafter, for a new site visit, or for more documents.
+  async requestRework(firmId: string, actorId: string, assignmentId: string, dto: { kind: 'DRAFTER' | 'REINSPECTION' | 'DOCUMENTS'; reason: string; dueDate?: string }) {
+    const assignment = await this.prisma.assignment.findFirst({
+      where: { id: assignmentId, firmId },
+      select: { code: true, reportSubmittedAt: true, assignedDrafterId: true, assignedInspectorId: true, bank: { select: { name: true } } },
+    });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    if (assignment.reportSubmittedAt) throw new ConflictException('The report is already approved');
+    const toId = dto.kind === 'REINSPECTION' ? assignment.assignedInspectorId : assignment.assignedDrafterId;
+    if (!toId) throw new BadRequestException(`No ${dto.kind === 'REINSPECTION' ? 'site inspector' : 'drafter'} is chosen on this case`);
+    const reason = dto.reason.trim();
+    if (reason.length < 3) throw new BadRequestException('Say what needs to be done');
+    if (dto.dueDate && new Date(dto.dueDate) < new Date(new Date().toDateString())) throw new BadRequestException('The due date cannot be in the past');
+    const title = dto.kind === 'DRAFTER' ? 'Report returned for rework' : dto.kind === 'REINSPECTION' ? 'New site visit requested' : 'More documents needed';
+    await this.prisma.$transaction(async (tx) => {
+      const last = await tx.reworkRequest.aggregate({ where: { assignmentId, firmId }, _max: { revision: true } });
+      const revision = (last._max.revision ?? 0) + 1;
+      await tx.reworkRequest.create({ data: { firmId, assignmentId, kind: dto.kind, reason, dueDate: dto.dueDate ? new Date(dto.dueDate) : null, assignedToId: toId, requestedById: actorId, revision } });
+      await this.notifications.notify(tx, { firmId, userId: toId, assignmentId, kind: 'REWORK', title, body: `${assignment.code} · ${assignment.bank.name}. ${reason}${dto.dueDate ? ` Due ${dto.dueDate}.` : ''}` });
+      await this.audit.record({ firmId, actorId, entityType: 'Assignment', entityId: assignmentId, action: 'rework.requested', metadata: { kind: dto.kind, reason, revision, dueDate: dto.dueDate ?? null } }, tx);
+    });
+    return this.state(firmId, assignmentId);
+  }
+
+  // The approved PDF exactly as it was stored.
+  async finalFile(firmId: string, assignmentId: string) {
+    const report = await this.prisma.finalReport.findFirst({ where: { assignmentId, firmId }, orderBy: { revision: 'desc' } });
+    if (!report) throw new NotFoundException('The report has not been approved yet');
+    return { bytes: await this.storage.read(report.storageKey), name: report.fileName };
+  }
+
+  // After approval the report is locked. Reopening it starts a revision: the drafter is asked to change it, and the
+  // next approval is stored as a new revision. The bill and the record of what was sent stay as they are.
+  async reopen(firmId: string, actorId: string, assignmentId: string, reasonText: string) {
+    const assignment = await this.prisma.assignment.findFirst({ where: { id: assignmentId, firmId }, select: { code: true, reportSubmittedAt: true, assignedDrafterId: true, bank: { select: { name: true } } } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    if (!assignment.reportSubmittedAt) throw new ConflictException('The report is not approved, so there is nothing to reopen');
+    if (!assignment.assignedDrafterId) throw new BadRequestException('No drafter is chosen on this case');
+    const reason = reasonText.trim();
+    if (reason.length < 3) throw new BadRequestException('Say why the report is being revised');
+    await this.prisma.$transaction(async (tx) => {
+      const last = await tx.reworkRequest.aggregate({ where: { assignmentId, firmId }, _max: { revision: true } });
+      await tx.assignment.update({ where: { id: assignmentId }, data: { reportSubmittedAt: null, reportSubmittedById: null } });
+      await tx.reworkRequest.create({ data: { firmId, assignmentId, kind: 'DRAFTER', reason: `Revision: ${reason}`, assignedToId: assignment.assignedDrafterId!, requestedById: actorId, revision: (last._max.revision ?? 0) + 1 } });
+      await this.notifications.notify(tx, { firmId, userId: assignment.assignedDrafterId!, assignmentId, kind: 'REWORK', title: 'Approved report reopened for a revision', body: `${assignment.code} · ${assignment.bank.name}. ${reason}` });
+      await this.audit.record({ firmId, actorId, entityType: 'Assignment', entityId: assignmentId, action: 'report.reopened', metadata: { reason } }, tx);
+    });
+    return this.state(firmId, assignmentId);
   }
 
   async setCheck(firmId: string, actorId: string, assignmentId: string, itemKey: string, checked: boolean, note?: string) {
@@ -117,9 +177,40 @@ export class DispatchService {
       const open = [...current.items.filter((i) => !i.checked).map((i) => i.label), ...(current.evidence.checked ? [] : ['Market rate evidence'])];
       throw new ConflictException({ message: ['Tick every item before approving:', ...open], error: 'Conflict', statusCode: 409 });
     }
+    // Differences between documents and site, and documents that disagree, are settled by a person before the report is approved.
+    if ((current.openDifferences > 0 || current.conflicts.length > 0) && !relaxChecks()) {
+      throw new ConflictException({
+        message: ['Settle these before approving:', ...(current.openDifferences > 0 ? [`${current.openDifferences} difference${current.openDifferences === 1 ? '' : 's'} between the documents and the site have no decision (Compare page)`] : []), ...current.conflicts.map((c) => `The documents disagree on ${c} (choose one in the workbench)`)],
+        error: 'Conflict',
+        statusCode: 409,
+      });
+    }
+    // The report as approved: a stored PDF with its number, revision and a record of who approved it and when.
+    const approver = await this.prisma.user.findUnique({ where: { id: actorId }, select: { fullName: true } });
+    const previous = await this.prisma.finalReport.count({ where: { assignmentId, firmId } });
+    const revision = previous + 1;
+    const meta = await this.prisma.assignment.findFirstOrThrow({ where: { id: assignmentId, firmId }, select: { code: true } });
+    const reportNumber = `${meta.code}-${current.format}-R${revision}`;
+    const pdf = await this.bankReport.file(firmId, { userId: actorId, firmId, role: 'VALUER' } as never, assignmentId, 'pdf');
+    const stored = await this.storage.save(firmId, Buffer.from(pdf.bytes));
+    const approvedAt = new Date();
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.finalReport.create({
+          data: {
+            firmId, assignmentId, reportNumber, revision, format: current.format, fileName: `${reportNumber}.pdf`, storageKey: stored.storageKey, sha256: stored.sha256, sizeBytes: stored.sizeBytes, approvedById: actorId, approvedAt,
+            // A record of the approval, not a legal e-signature: that has to go through an approved signing provider.
+            signature: { method: 'APPROVAL_RECORD', signerId: actorId, signerName: approver?.fullName ?? null, signedAt: approvedAt.toISOString(), reportNumber, sha256: stored.sha256, note: 'Recorded approval by the valuer. Not a legal e-signature.' },
+          },
+        });
+        await tx.assignment.update({ where: { id: assignmentId }, data: { reportSubmittedAt: approvedAt, reportSubmittedById: actorId } });
+        await this.audit.record({ firmId, actorId, entityType: 'Assignment', entityId: assignmentId, action: 'report.approved', metadata: { reportNumber, revision, sha256: stored.sha256 } }, tx);
+      });
+    } catch (error) {
+      await this.storage.remove(stored.storageKey);
+      throw error;
+    }
     await this.prisma.$transaction(async (tx) => {
-      await tx.assignment.update({ where: { id: assignmentId }, data: { reportSubmittedAt: new Date(), reportSubmittedById: actorId } });
-      await this.audit.record({ firmId, actorId, entityType: 'Assignment', entityId: assignmentId, action: 'report.submitted' }, tx);
       const exists = await tx.invoice.count({ where: { assignmentId, firmId, status: { not: 'CANCELLED' } } });
       // The fee on the case, or the amount the valuer typed when the case had none.
       const fee = assignment.fee && Number(assignment.fee) > 0 ? Number(assignment.fee) : amount && amount > 0 ? Math.round(amount * 100) / 100 : 0;
@@ -149,8 +240,7 @@ export class DispatchService {
     let deliveryError: string | undefined;
     if (dto.channel === 'EMAIL' && this.mail.isConfigured) {
       try {
-        const actor = { userId: actorId, firmId, role: 'VALUER' } as never;
-        const report = await this.bankReport.file(firmId, actor, assignmentId, 'pdf');
+        const report = await this.finalFile(firmId, assignmentId);
         const attachments: { filename: string; content: Buffer; contentType: string }[] = [{ filename: report.name, content: Buffer.from(report.bytes), contentType: 'application/pdf' }];
         if (before.billing) {
           const bill = await this.accounts.pdf(firmId, before.billing.id);

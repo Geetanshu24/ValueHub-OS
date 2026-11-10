@@ -45,6 +45,8 @@ const fieldSelect = {
   state: true,
   verifiedValue: true,
   useInReport: true,
+  note: true,
+  unit: true,
   reviewedAt: true,
 } satisfies Prisma.ExtractedFieldSelect;
 
@@ -240,9 +242,13 @@ export class DocumentsService {
 
   // Saves what the drafter read from this document for one fact. The newest entry for that fact is
   // updated (so a cell never piles up copies); an empty value marks it unknown so it drops out of the report.
-  async setFieldValue(firmId: string, actorId: string, documentId: string, fieldKey: string, rawValue: string) {
+  async setFieldValue(firmId: string, actorId: string, documentId: string, fieldKey: string, rawValue: string, extras: { page?: number; note?: string; unit?: 'SQM' | 'SQYD' | 'SQFT' } = {}) {
     if (!/^[a-z][a-z0-9_]{1,59}$/.test(fieldKey)) throw new BadRequestException('fieldKey must be snake_case');
-    await this.requireDocument(firmId, documentId);
+    const document = await this.requireDocument(firmId, documentId);
+    if (extras.page && document.pageCount && extras.page > document.pageCount) throw new BadRequestException(`The document has ${document.pageCount} pages`);
+    const note = extras.note?.trim() || null;
+    // A unit only means something for areas.
+    const unit = /_sqm$/.test(fieldKey) ? (extras.unit ?? 'SQM') : null;
     const value = rawValue.trim();
     if (value) this.assertValueShape(fieldKey, value);
 
@@ -250,23 +256,24 @@ export class DocumentsService {
       const existing = await tx.extractedField.findFirst({
         where: { documentId, firmId, fieldKey },
         orderBy: { id: 'desc' },
-        select: { id: true, extractedValue: true, state: true, verifiedValue: true },
+        select: { id: true, extractedValue: true, state: true, verifiedValue: true, unit: true, note: true, pageNumber: true },
       });
       if (!existing) {
         if (!value) return null;
         const created = await tx.extractedField.create({
-          data: { firmId, documentId, fieldKey, extractedValue: value, pageNumber: 1, source: 'MANUAL' },
+          data: { firmId, documentId, fieldKey, extractedValue: value, pageNumber: extras.page ?? 1, source: 'MANUAL', note, unit, enteredById: actorId },
           select: fieldSelect,
         });
         await this.audit.record({ firmId, actorId, entityType: 'ExtractedField', entityId: created.id, action: 'field.entered' }, tx);
         return created;
       }
       const current = (existing.state === 'CORRECTED' ? existing.verifiedValue ?? existing.extractedValue : existing.extractedValue).trim();
-      if (value === current && existing.state !== 'UNKNOWN') return tx.extractedField.findUniqueOrThrow({ where: { id: existing.id }, select: fieldSelect });
+      const same = value === current && existing.state !== 'UNKNOWN' && existing.unit === unit && (existing.note ?? null) === note && (extras.page === undefined || extras.page === existing.pageNumber);
+      if (same) return tx.extractedField.findUniqueOrThrow({ where: { id: existing.id }, select: fieldSelect });
       const updated = await tx.extractedField.update({
         where: { id: existing.id },
         data: value
-          ? { extractedValue: value, state: 'UNVERIFIED', verifiedValue: null, reviewedById: null, reviewedAt: null, source: 'MANUAL' }
+          ? { extractedValue: value, state: 'UNVERIFIED', verifiedValue: null, reviewedById: null, reviewedAt: null, source: 'MANUAL', note, unit, enteredById: actorId, ...(extras.page && { pageNumber: extras.page }) }
           : { state: 'UNKNOWN', reviewedById: actorId, reviewedAt: new Date() },
         select: fieldSelect,
       });

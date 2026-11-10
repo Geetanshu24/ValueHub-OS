@@ -12,7 +12,6 @@ import InspectionStep from './pages/InspectionStep.tsx'
 import ValuationStep from './pages/ValuationStep.tsx'
 import QualityReview from './pages/QualityReview.tsx'
 import SubmissionStep from './pages/SubmissionStep.tsx'
-import CommandCentre from './pages/CommandCentre.tsx'
 import DocumentDesk from './pages/DocumentDesk.tsx'
 import EvidenceVault from './pages/EvidenceVault.tsx'
 import InspectionWorkspace from './pages/InspectionWorkspace.tsx'
@@ -21,6 +20,7 @@ import RevisionDesk from './pages/RevisionDesk.tsx'
 import BankReport from './pages/BankReport.tsx'
 import DraftWorkbench from './pages/DraftWorkbench.tsx'
 import Compare from './pages/Compare.tsx'
+import NewCase from './pages/NewCase.tsx'
 import ValuerCheck from './pages/ValuerCheck.tsx'
 import ReportStudio from './pages/ReportStudio.tsx'
 import ValuationWorkspace from './pages/ValuationWorkspace.tsx'
@@ -38,9 +38,10 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<CommandCentre />} />
+        <Route index element={<Navigate to="/assignments" replace />} />
         <Route path="assignments" element={<Assignments />} />
-        <Route path="assignments/new" element={<NewAssignment />} />
+        <Route path="assignments/new" element={<NewCase />} />
+        <Route path="assignments/new/detailed" element={<NewAssignment />} />
         <Route path="assignments/:id" element={<AssignmentDetail />} />
         <Route path="assignments/:id/documents" element={<PropertyDocuments />} />
         <Route path="assignments/:id/inspection" element={<InspectionStep />} />

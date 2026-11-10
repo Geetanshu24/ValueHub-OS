@@ -185,28 +185,31 @@ model Firm {
   name      String
   createdAt DateTime @default(now())
 
-  users           User[]
-  banks           Bank[]
-  branches        BankBranch[]
-  properties      Property[]
-  assignments     Assignment[]
-  documents       Document[]
-  extractedFields ExtractedField[]
-  inspections     Inspection[]
-  discrepancies   Discrepancy[]
-  comparables     MarketComparable[]
-  valuations      ValuationVersion[]
-  templates       ReportTemplate[]
-  reports         ReportVersion[]
-  submissions     Submission[]
-  invoices        Invoice[]
-  payments        Payment[]
-  queries         BankQuery[]
-  auditEvents     AuditEvent[]
-  idSequences     IdSequence[]
-  bankReportForms BankReportForm[]
-  reportChecks    ReportCheck[]
-  reportSends     ReportSend[]
+  users               User[]
+  banks               Bank[]
+  branches            BankBranch[]
+  properties          Property[]
+  assignments         Assignment[]
+  documents           Document[]
+  extractedFields     ExtractedField[]
+  inspections         Inspection[]
+  discrepancies       Discrepancy[]
+  comparables         MarketComparable[]
+  valuations          ValuationVersion[]
+  templates           ReportTemplate[]
+  reports             ReportVersion[]
+  submissions         Submission[]
+  invoices            Invoice[]
+  payments            Payment[]
+  queries             BankQuery[]
+  auditEvents         AuditEvent[]
+  idSequences         IdSequence[]
+  bankReportForms     BankReportForm[]
+  reportChecks        ReportCheck[]
+  comparisonDecisions ComparisonDecision[]
+  reworkRequests      ReworkRequest[]
+  finalReports        FinalReport[]
+  reportSends         ReportSend[]
 }
 
 model User {
@@ -356,27 +359,30 @@ model Assignment {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
-  firm              Firm               @relation(fields: [firmId], references: [id])
-  bank              Bank               @relation(fields: [bankId], references: [id])
-  branch            BankBranch?        @relation(fields: [branchId], references: [id])
-  property          Property           @relation(fields: [propertyId], references: [id])
-  assignedValuer    User               @relation("AssignmentValuer", fields: [assignedValuerId], references: [id])
-  assignedDrafter   User?              @relation("AssignmentDrafter", fields: [assignedDrafterId], references: [id])
-  assignedInspector User?              @relation("AssignmentInspector", fields: [assignedInspectorId], references: [id])
-  reusedFrom        Assignment?        @relation("AssignmentReuse", fields: [reusedFromId], references: [id])
-  reusedBy          Assignment[]       @relation("AssignmentReuse")
-  documents         Document[]
-  inspections       Inspection[]
-  discrepancies     Discrepancy[]
-  comparables       MarketComparable[]
-  valuations        ValuationVersion[]
-  reports           ReportVersion[]
-  bankReportForms   BankReportForm[]
-  submissions       Submission[]
-  invoices          Invoice[]
-  queries           BankQuery[]
-  reportChecks      ReportCheck[]
-  reportSends       ReportSend[]
+  firm                Firm                 @relation(fields: [firmId], references: [id])
+  bank                Bank                 @relation(fields: [bankId], references: [id])
+  branch              BankBranch?          @relation(fields: [branchId], references: [id])
+  property            Property             @relation(fields: [propertyId], references: [id])
+  assignedValuer      User                 @relation("AssignmentValuer", fields: [assignedValuerId], references: [id])
+  assignedDrafter     User?                @relation("AssignmentDrafter", fields: [assignedDrafterId], references: [id])
+  assignedInspector   User?                @relation("AssignmentInspector", fields: [assignedInspectorId], references: [id])
+  reusedFrom          Assignment?          @relation("AssignmentReuse", fields: [reusedFromId], references: [id])
+  reusedBy            Assignment[]         @relation("AssignmentReuse")
+  documents           Document[]
+  inspections         Inspection[]
+  discrepancies       Discrepancy[]
+  comparables         MarketComparable[]
+  valuations          ValuationVersion[]
+  reports             ReportVersion[]
+  bankReportForms     BankReportForm[]
+  submissions         Submission[]
+  invoices            Invoice[]
+  queries             BankQuery[]
+  reportChecks        ReportCheck[]
+  reportSends         ReportSend[]
+  comparisonDecisions ComparisonDecision[]
+  reworkRequests      ReworkRequest[]
+  finalReports        FinalReport[]
 
   @@unique([firmId, code])
   @@index([firmId, status])
@@ -431,6 +437,10 @@ model ExtractedField {
   verifiedValue  String?
   // The drafter chose this document's value as the one the report uses when documents disagree.
   useInReport    Boolean           @default(false)
+  // Where in the document it was read, a note, the unit it was written in, and who typed it.
+  note           String?
+  unit           String? // SQM | SQYD | SQFT for area facts
+  enteredById    String?
   reviewedById   String?
   reviewedAt     DateTime?
 
@@ -936,4 +946,69 @@ model ReportSend {
 
   @@index([assignmentId])
   @@index([firmId])
+}
+
+// What a person decided about a difference between the documents and the site. Nothing is decided by the system.
+model ComparisonDecision {
+  id            String   @id @default(uuid())
+  firmId        String
+  assignmentId  String
+  factKey       String
+  outcome       String // DOCUMENT_CORRECT | SITE_CORRECT | EXPLAINED | NOT_APPLICABLE | NOT_AVAILABLE
+  reason        String
+  documentValue String
+  siteValue     String
+  decidedById   String
+  decidedAt     DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  firm       Firm       @relation(fields: [firmId], references: [id])
+
+  @@unique([assignmentId, factKey])
+  @@index([firmId])
+}
+
+// The valuer sending work back: to the drafter, for a new site visit, or for more documents.
+model ReworkRequest {
+  id            String    @id @default(uuid())
+  firmId        String
+  assignmentId  String
+  kind          String // DRAFTER | REINSPECTION | DOCUMENTS
+  reason        String
+  dueDate       DateTime? @db.Date
+  assignedToId  String
+  requestedById String
+  revision      Int
+  createdAt     DateTime  @default(now())
+  resolvedAt    DateTime?
+  resolvedById  String?
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  firm       Firm       @relation(fields: [firmId], references: [id])
+
+  @@index([assignmentId, resolvedAt])
+  @@index([firmId])
+}
+
+// The report as approved: a stored PDF with its number, revision and the approval (signature) record.
+model FinalReport {
+  id           String   @id @default(uuid())
+  firmId       String
+  assignmentId String
+  reportNumber String
+  revision     Int
+  format       String // BOI | PNB | SBI
+  fileName     String
+  storageKey   String
+  sha256       String
+  sizeBytes    Int
+  approvedById String
+  approvedAt   DateTime @default(now())
+  signature    Json
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  firm       Firm       @relation(fields: [firmId], references: [id])
+
+  @@unique([firmId, reportNumber])
+  @@index([assignmentId])
 }

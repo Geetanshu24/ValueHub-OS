@@ -10,11 +10,13 @@ import {
   Query,
   StreamableFile,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UPLOAD_LIMITS } from '@value-hub/valuation-shared';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
+import { DocumentAccessGuard } from '../../common/auth/document-access.guard.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import {
   AddExtractedFieldDto,
@@ -26,6 +28,7 @@ import {
 } from './documents.dto.js';
 import { DocumentsService } from './documents.service.js';
 
+@UseGuards(DocumentAccessGuard)
 @Controller()
 export class DocumentsController {
   constructor(private readonly documents: DocumentsService) {}
@@ -52,7 +55,7 @@ export class DocumentsController {
     return this.documents.get(user.firmId, id);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
   @Patch('documents/:id')
   update(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateDocumentDto) {
     return this.documents.update(user.firmId, user.userId, id, dto);
@@ -77,7 +80,7 @@ export class DocumentsController {
     @Param('fieldKey') fieldKey: string,
     @Body() dto: SetFieldValueDto,
   ) {
-    return this.documents.setFieldValue(user.firmId, user.userId, id, fieldKey, dto.value);
+    return this.documents.setFieldValue(user.firmId, user.userId, id, fieldKey, dto.value, { page: dto.page, note: dto.note, unit: dto.unit });
   }
 
   @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ASSIGNMENT_PRIORITIES, ASSIGNMENT_PRIORITY_LABELS, DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, INTAKE_SOURCE_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS,
@@ -50,6 +50,18 @@ function readDraft() {
   try { return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as null | Record<string, unknown> } catch { return null }
 }
 
+// The papers a case usually comes with, in the order they are usually thought of.
+const CHECKLIST_TYPES: DocumentType[] = ['BANK_INSTRUCTION', 'SALE_DEED', 'REGISTRY_PAPERS', 'APPROVED_PLAN', 'LAYOUT_PLAN', 'OCCUPATION_CERTIFICATE', 'COMPLETION_CERTIFICATE', 'REVENUE_RECORD', 'SHAJRA_PLAN', 'MAGISTRATE_CERTIFICATE', 'PROPERTY_TAX', 'ELECTRICITY_BILL', 'OTHER']
+
+// A first guess at what a file is from its name; the person can change it.
+const TYPE_GUESSES: [RegExp, DocumentType][] = [
+  [/layout/i, 'LAYOUT_PLAN'], [/completion/i, 'COMPLETION_CERTIFICATE'], [/occupation|\boc\b/i, 'OCCUPATION_CERTIFICATE'],
+  [/shajra|sajra|sejra/i, 'SHAJRA_PLAN'], [/jamabandi|jamabandhi|khasra|khatauni|revenue/i, 'REVENUE_RECORD'], [/magistrate/i, 'MAGISTRATE_CERTIFICATE'],
+  [/patwari/i, 'PATWARI_REPORT'], [/electric|bijli/i, 'ELECTRICITY_BILL'], [/property.?tax|house.?tax/i, 'PROPERTY_TAX'], [/water/i, 'WATER_BILL'],
+  [/registry|regd/i, 'REGISTRY_PAPERS'], [/deed|conveyance|sale/i, 'SALE_DEED'], [/approved|sanction|map|plan/i, 'APPROVED_PLAN'],
+]
+const guessType = (name: string): DocumentType => TYPE_GUESSES.find(([pattern]) => pattern.test(name))?.[1] ?? 'BANK_INSTRUCTION'
+
 export default function NewAssignment() {
   const banks = useFetch<Paginated<Bank>>('/banks?pageSize=100')
   const staff = useFetch<Staff[]>('/users/staff')
@@ -67,7 +79,18 @@ export default function NewAssignment() {
   const [previous, setPrevious] = useState<Assignment[]>([])
   const [property, setProperty] = useState(blankProperty)
   const [form, setForm] = useState({ bankId: '', branchId: '', assignedValuerId: '', assignedDrafterId: '', assignedInspectorId: '', clientPhone: '', purpose: '', scope: '', valuationDate: dateToday, instructionDate: dateToday, dueDate: dueDefault, priority: 'NORMAL' as AssignmentPriority, borrowerName: '', fee: '' })
-  const [documentType, setDocumentType] = useState<DocumentType>('BANK_INSTRUCTION')
+  // Each file has its own type, guessed from its name and changeable.
+  const [fileTypes, setFileTypes] = useState<Record<string, DocumentType>>({})
+  const fileKey = (file: File) => `${file.name}-${file.size}`
+  const typeOf = (file: File): DocumentType => fileTypes[fileKey(file)] ?? guessType(file.name)
+  // New files join the list (they never replace it). When added from a type's own button they take that type.
+  const addFiles = (incoming: File[], type?: DocumentType) => {
+    if (incoming.length === 0) return
+    setFiles((current) => [...current, ...incoming.filter((f) => !current.some((c) => fileKey(c) === fileKey(f)))])
+    if (type) setFileTypes((current) => ({ ...current, ...Object.fromEntries(incoming.map((f) => [fileKey(f), type])) }))
+  }
+  const typedInput = useRef<HTMLInputElement>(null)
+  const typedFor = useRef<DocumentType>('SALE_DEED')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [created, setCreated] = useState<{ id: string; code: string; uploaded: number; failed: string[] } | null>(null)
@@ -166,7 +189,7 @@ export default function NewAssignment() {
       })
       const failed: string[] = []
       for (const file of files) {
-        const data = new FormData(); data.set('type', documentType); data.set('source', source); data.set('assignmentId', assignment.id); data.set('file', file)
+        const data = new FormData(); data.set('type', typeOf(file)); data.set('source', source); data.set('assignmentId', assignment.id); data.set('file', file)
         try { await api.upload(`/properties/${propertyId}/documents`, data) } catch (caught) { failed.push(`${file.name}: ${errorMessage(caught)}`) }
       }
       discardDraft()
@@ -206,8 +229,23 @@ export default function NewAssignment() {
           <div className="intake-integration-note"><span>i</span><p>WhatsApp and email are not connected yet. Download those attachments to your device and upload them here; the source you pick is recorded so your team knows how the work arrived.</p></div>
         </section>
         <section className="intake-panel intake-upload-panel"><div className="intake-panel-heading"><div><h3>{source === 'MANUAL' ? 'Attach files (optional)' : 'Upload and read documents'}</h3><p>Bank letter, photos and supporting documents are stored and read for you to confirm.</p></div><span className="intake-upload-glyph">↑</span></div>
-          <label className="intake-dropzone"><input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={(event) => setFiles(Array.from(event.target.files ?? []))} /><span className="intake-cloud">⇧</span><b>Drop files here or <em>browse</em></b><small>PDF, JPG or PNG · up to 25 MB per file</small><span className="intake-drop-hint">MULTIPLE FILES SUPPORTED</span></label>
-          {files.length > 0 ? <div className="intake-file-list">{files.map((file) => <div className="intake-file-row" key={`${file.name}-${file.size}`}><span className="intake-file-icon">{file.type.includes('pdf') ? 'PDF' : 'IMG'}</span><span className="intake-file-info"><b>{file.name}</b><small>{(file.size / 1024 / 1024).toFixed(1)} MB · Ready</small></span><button aria-label={`Remove ${file.name}`} type="button" onClick={() => setFiles(files.filter((candidate) => candidate !== file))}>×</button></div>)}<button type="button" className="intake-clear-files" onClick={() => setFiles([])}>Remove all files</button></div> : <div className="intake-empty-files"><span>↗</span><p>Your selected files will appear here.</p></div>}
+          <label className="intake-dropzone"><input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={(event) => { addFiles(Array.from(event.target.files ?? [])); event.target.value = '' }} /><span className="intake-cloud">⇧</span><b>Drop files here or <em>browse</em></b><small>PDF, JPG or PNG · up to 25 MB per file</small><span className="intake-drop-hint">MULTIPLE FILES SUPPORTED</span></label>
+          <div className="nd-checklist" aria-label="Documents for this case">
+            <b>Documents for this case</b>
+            <small>Add each paper under its type. Anything you add above is sorted here too.</small>
+            <div className="nd-chips">
+              {CHECKLIST_TYPES.map((type) => {
+                const count = files.filter((f) => typeOf(f) === type).length
+                return (
+                  <button key={type} type="button" className={`nd-chip ${count > 0 ? 'is-on' : ''}`} onClick={() => { typedFor.current = type; typedInput.current?.click() }}>
+                    <span>{count > 0 ? '✓' : '+'}</span>{DOCUMENT_TYPE_LABELS[type]}{count > 0 && <em>{count}</em>}
+                  </button>
+                )
+              })}
+            </div>
+            <input ref={typedInput} type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" onChange={(event) => { addFiles(Array.from(event.target.files ?? []), typedFor.current); event.target.value = '' }} />
+          </div>
+          {files.length > 0 ? <div className="intake-file-list">{files.map((file) => <div className="intake-file-row" key={`${file.name}-${file.size}`}><span className="intake-file-icon">{file.type.includes('pdf') ? 'PDF' : 'IMG'}</span><span className="intake-file-info"><b>{file.name}</b><small>{(file.size / 1024 / 1024).toFixed(1)} MB · Ready</small></span><select className={inputClass} aria-label={`Document type of ${file.name}`} value={typeOf(file)} onChange={(e) => setFileTypes({ ...fileTypes, [fileKey(file)]: e.target.value as DocumentType })} style={{ maxWidth: 190 }}>{DOCUMENT_TYPES.map((value) => <option key={value} value={value}>{DOCUMENT_TYPE_LABELS[value]}</option>)}</select><button aria-label={`Remove ${file.name}`} type="button" onClick={() => setFiles(files.filter((candidate) => candidate !== file))}>×</button></div>)}<button type="button" className="intake-clear-files" onClick={() => setFiles([])}>Remove all files</button></div> : <div className="intake-empty-files"><span>↗</span><p>Your selected files will appear here.</p></div>}
         </section>
       </div>
       <footer className="intake-footer"><div><b>{files.length ? `${files.length} file${files.length === 1 ? '' : 's'} ready` : 'No files added yet'}</b><small>{source === 'MANUAL' || !files.length ? 'You will type the details in next.' : 'The files are read, not saved, until you create the assignment.'}</small></div><button type="button" className="intake-primary" disabled={busy} onClick={() => void readInstruction()}>{busy ? 'Reading documents…' : source === 'MANUAL' || !files.length ? 'Enter details' : 'Read documents'} <span>→</span></button></footer>
@@ -284,7 +322,7 @@ export default function NewAssignment() {
         </div></section>
       </div>
       <aside className="intake-create-aside"><section className="intake-summary-card"><span className="intake-summary-label">ASSIGNMENT PREVIEW</span><div className="intake-summary-property"><span>⌂</span><div><b>{selected?.code ?? 'New property'}</b><small>{(selected?.addressLine ?? property.addressLine) || 'Property address'}</small></div></div><div className="intake-summary-rule"/><dl><div><dt>Source</dt><dd>{INTAKE_SOURCE_LABELS[source]}</dd></div><div><dt>Bank</dt><dd>{bankName(form.bankId) ?? 'Not selected'}</dd></div><div><dt>Purpose</dt><dd>{form.purpose || 'Not specified'}</dd></div><div><dt>Valuer</dt><dd>{validStaff.find((person) => person.id === form.assignedValuerId)?.fullName ?? 'Not assigned'}</dd></div><div><dt>Priority</dt><dd>{ASSIGNMENT_PRIORITY_LABELS[form.priority]}</dd></div><div><dt>Due date</dt><dd>{form.dueDate ? new Date(`${form.dueDate}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</dd></div></dl><div className="intake-summary-docs"><span>▤</span><div><b>{files.length} instruction file{files.length === 1 ? '' : 's'}</b><small>Attached when you create the assignment</small></div></div></section><div className="intake-next-card"><b>What happens next?</b><p>The assignment gets its ID and your files are stored against it.</p><div><span>2</span> Property & Documents</div><div><span>3</span> Site Inspection</div><div><span>4</span> Valuation Workings</div></div></aside>
-      {files.length > 0 && <section className="intake-panel intake-doc-type"><div><b>Classify instruction files</b><small>{files.length} file{files.length === 1 ? '' : 's'} will be stored once the assignment is created.</small></div><select className={inputClass} value={documentType} onChange={(e) => setDocumentType(e.target.value as DocumentType)}>{DOCUMENT_TYPES.map((value) => <option key={value} value={value}>{DOCUMENT_TYPE_LABELS[value]}</option>)}</select></section>}
+
       <footer className="intake-footer intake-create-footer"><button type="button" className="intake-back-button" onClick={() => setStep(3)}>← Back to existing work</button><span className="intake-footer-actions"><button type="button" className="intake-outline-button" onClick={saveDraft}>Save as draft</button><button type="submit" className="intake-primary" disabled={busy}>{busy ? 'Creating assignment…' : 'Create assignment'} <span>→</span></button></span></footer>
     </form>}
   </div>

@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { AssignmentAccessGuard } from '../../common/auth/assignment-access.guard.js';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import { CreateComparableDto, VerifyComparableDto } from './comparables.dto.js';
 import { ComparablesService } from './comparables.service.js';
 
+@UseGuards(AssignmentAccessGuard)
 @Controller()
 export class ComparablesController {
   constructor(private readonly comparables: ComparablesService) {}

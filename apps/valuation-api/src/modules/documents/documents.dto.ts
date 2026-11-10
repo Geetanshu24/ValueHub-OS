@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -58,6 +59,11 @@ export class SetFieldValueDto {
   @IsString()
   @MaxLength(500)
   value!: string;
+
+  // Where in the document it was read, a note, and the unit an area was written in.
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(5000) page?: number;
+  @IsOptional() @IsString() @MaxLength(500) note?: string;
+  @IsOptional() @IsIn(['SQM', 'SQYD', 'SQFT']) unit?: 'SQM' | 'SQYD' | 'SQFT';
 }
 
 export class AddExtractedFieldDto {

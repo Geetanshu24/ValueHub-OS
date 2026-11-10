@@ -13,6 +13,9 @@ interface State {
   allChecked: boolean; submitted: { at: string; by: string | null } | null
   billing: { id: string; code: string; amount: number; dueOn: string; status: string; paid: number; outstanding: number } | null
   contact: { branch: string; name: string | null; email: string | null; phone: string | null } | null
+  rework: { id: string; kind: string; reason: string; dueDate: string | null; revision: number; createdAt: string; resolvedAt: string | null }[]
+  openDifferences: number; conflicts: string[]
+  finalReport: { id: string; reportNumber: string; revision: number; approvedAt: string; sha256: string; fileName: string; signature: { signerName: string | null; note: string } } | null
   sends: { id: string; channel: string; recipient: string; note: string | null; deliveryStatus: string; deliveryError: string | null; sentAt: string }[]
 }
 interface Head { fee: string | null }
@@ -23,6 +26,7 @@ const PILL: Record<string, { text: string; tone: string }> = {
 }
 const CHANNELS = [['WHATSAPP', 'WhatsApp'], ['EMAIL', 'Email'], ['OTHER', 'Sent another way']] as const
 const BASES = [['LAND', 'Land'], ['BUILT_UP', 'Built-up'], ['CARPET', 'Carpet'], ['SUPER_BUILT_UP', 'Super built-up']] as const
+const REWORK_KIND: Record<string, string> = { DRAFTER: 'Returned to the drafter', REINSPECTION: 'New site visit requested', DOCUMENTS: 'More documents requested' }
 const inr = (n: number) => `₹ ${n.toLocaleString('en-IN')}`
 
 // The valuer's last step: tick each key item, approve (which raises the bill), then send the report to the bank.
@@ -41,6 +45,10 @@ export default function ValuerCheck() {
   const [recipient, setRecipient] = useState('')
   const [message, setMessage] = useState('')
   const [adding, setAdding] = useState(false)
+  const [back, setBack] = useState<'DRAFTER' | 'REINSPECTION' | 'DOCUMENTS' | null>(null)
+  const [reopening, setReopening] = useState(false)
+  const [reopenReason, setReopenReason] = useState('')
+  const [backForm, setBackForm] = useState({ reason: '', dueDate: '' })
   const [comp, setComp] = useState({ location: '', source: '', isTransaction: false, observedOn: new Date().toISOString().slice(0, 10), areaBasis: 'LAND', ratePerSqm: '' })
 
   const run = async (name: string, action: () => Promise<unknown>) => {
@@ -60,6 +68,8 @@ export default function ValuerCheck() {
     await api.post(`/assignments/${id}/comparables`, { ...comp, ratePerSqm: Number(comp.ratePerSqm) })
     setComp({ ...comp, location: '', source: '', ratePerSqm: '' }); setAdding(false)
   })
+  const sendBack = () => run('back', async () => { await api.post(`/assignments/${id}/dispatch/rework`, { kind: back, reason: backForm.reason, ...(backForm.dueDate && { dueDate: backForm.dueDate }) }); setBack(null); setBackForm({ reason: '', dueDate: '' }); setNotice('Sent back. They have a pop-up.') })
+  const reopen = () => run('reopen', async () => { await api.post(`/assignments/${id}/dispatch/reopen`, { reason: reopenReason }); setReopening(false); setReopenReason(''); setNotice('Reopened. The drafter has a pop-up to revise the report.') })
   const verify = (compId: string, verified: boolean) => run(`verify-${compId}`, () => api.patch(`/comparables/${compId}/verify`, { verified }))
   const noFee = !head.data?.fee && !s?.billing
 
@@ -124,6 +134,40 @@ export default function ValuerCheck() {
         </div>}
       </div></div>
 
+      {!s.submitted && canAct && <div className="wb-left" style={{ padding: 14 }}>
+        <h3 className="chk-h">Not ready? Send it back</h3>
+        {(s.openDifferences > 0 || s.conflicts.length > 0) && <p className="pd-flag">{s.openDifferences > 0 ? `${s.openDifferences} difference${s.openDifferences === 1 ? '' : 's'} between the documents and the site still need a decision (Compare page). ` : ''}{s.conflicts.length > 0 ? `The documents disagree on ${s.conflicts.join(', ')}. ` : ''}You cannot approve until they are settled.</p>}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="pd-btn is-ghost" onClick={() => setBack('DRAFTER')}>Return to the drafter</button>
+          <button type="button" className="pd-btn is-ghost" onClick={() => setBack('REINSPECTION')}>Ask for a new site visit</button>
+          <button type="button" className="pd-btn is-ghost" onClick={() => setBack('DOCUMENTS')}>Ask for more documents</button>
+        </div>
+        {back && <div className="cmp-form" style={{ maxWidth: 560 }}>
+          <b>{REWORK_KIND[back]}</b>
+          <input className="ui-input" placeholder="What needs to be done?" value={backForm.reason} onChange={(e) => setBackForm({ ...backForm, reason: e.target.value })} />
+          <label className="text-sm">Needed by <input className="ui-input" type="date" min={new Date().toISOString().slice(0, 10)} value={backForm.dueDate} onChange={(e) => setBackForm({ ...backForm, dueDate: e.target.value })} /></label>
+          <span><button type="button" className="pd-btn is-ghost" onClick={() => setBack(null)}>Cancel</button> <button type="button" className="pd-btn is-primary" disabled={busy !== null || backForm.reason.trim().length < 3} onClick={() => void sendBack()}>Send back</button></span>
+        </div>}
+        {s.rework.length > 0 && <ul className="bank-issues" style={{ marginTop: 10 }}>{s.rework.map((r) => <li key={r.id}>Round {r.revision} · {REWORK_KIND[r.kind]}: {r.reason}{r.dueDate ? ` · due ${formatDate(r.dueDate)}` : ''} · {r.resolvedAt ? `done ${formatDate(r.resolvedAt)}` : 'waiting'}</li>)}</ul>}
+      </div>}
+
+      {s.submitted && s.finalReport && <div className="wb-left" style={{ padding: 14 }}>
+        <h3 className="chk-h">Final report</h3>
+        <div className="wb-brief">
+          <span><small>Report number</small><b>{s.finalReport.reportNumber}</b></span>
+          <span><small>Revision</small><b>{s.finalReport.revision}</b></span>
+          <span><small>Approved</small><b>{new Date(s.finalReport.approvedAt).toLocaleString('en-IN')} · {s.finalReport.signature.signerName ?? s.submitted.by}</b></span>
+          <span><small>&nbsp;</small><button type="button" className="pd-btn is-ghost" onClick={() => void downloadFile(`/assignments/${id}/dispatch/final`, s.finalReport!.fileName).catch((c: unknown) => setError(errorMessage(c)))}>Download the final report (PDF)</button></span>
+        </div>
+        <p className="pd-muted" style={{ margin: '6px 0' }} title={s.finalReport.sha256}>{s.finalReport.signature.note} Fingerprint {s.finalReport.sha256.slice(0, 12)}…</p>
+        {canAct && (reopening
+          ? <div className="cmp-form" style={{ maxWidth: 560 }}>
+              <input className="ui-input" placeholder="Why does the report need a revision?" value={reopenReason} onChange={(e) => setReopenReason(e.target.value)} />
+              <span><button type="button" className="pd-btn is-ghost" onClick={() => setReopening(false)}>Cancel</button> <button type="button" className="pd-btn is-primary" disabled={busy !== null || reopenReason.trim().length < 3} onClick={() => void reopen()}>Reopen for a revision</button></span>
+            </div>
+          : <button type="button" className="chk-link" onClick={() => setReopening(true)}>Reopen for a revision</button>)}
+      </div>}
+
       {s.submitted && <>
         <div className="wb-left" style={{ padding: 14 }}>
           <h3 className="chk-h">Bill</h3>
@@ -139,7 +183,7 @@ export default function ValuerCheck() {
         <div className="wb-left" style={{ padding: 14 }}>
           <h3 className="chk-h">Send to the bank</h3>
           <div className="flex flex-wrap gap-2 mb-2">
-            <button type="button" className="pd-btn is-ghost" onClick={() => void downloadFile(`/assignments/${id}/bank-report/pdf`, 'valuation-report.pdf').catch((c: unknown) => setError(errorMessage(c)))}>Download report (PDF)</button>
+            <button type="button" className="pd-btn is-ghost" onClick={() => void downloadFile(`/assignments/${id}/dispatch/final`, 'valuation-report.pdf').catch((c: unknown) => setError(errorMessage(c)))}>Download the final report (PDF)</button>
             <button type="button" className="pd-btn is-ghost" onClick={() => void downloadFile(`/assignments/${id}/bank-report/docx`, 'valuation-report.docx').catch((c: unknown) => setError(errorMessage(c)))}>Download report (Word)</button>
           </div>
           <div className="sb-channels" role="group" aria-label="Channel">{CHANNELS.map(([key, label]) => <button key={key} type="button" className={channel === key ? 'is-on' : ''} onClick={() => pickChannel(key)}>{label}</button>)}</div>

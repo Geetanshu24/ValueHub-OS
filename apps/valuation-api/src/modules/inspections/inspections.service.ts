@@ -344,6 +344,8 @@ export class InspectionsService {
         },
         tx,
       );
+      // A new visit that is submitted answers a request for reinspection.
+      await tx.reworkRequest.updateMany({ where: { assignmentId: inspection.assignmentId, firmId: user.firmId, kind: 'REINSPECTION', resolvedAt: null }, data: { resolvedAt: new Date(), resolvedById: user.userId } });
       return { inspection: await tx.inspection.findUniqueOrThrow({ where: { id }, select: inspectionSelect }), discrepanciesFlagged: flagged };
     });
   }

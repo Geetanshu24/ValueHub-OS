@@ -61,3 +61,31 @@ Everyone has their own user ID and password. A drafter or inspector sees only th
 3. **Phase 3 — Autofill from the workbench (done).**
    **Phase 4 — Site form and compare (done).**
 4. **Phase 5 — Valuer check with ticks, automatic bill, send and record (done).**
+
+## Against the SRS (ValuHub Valuation Platform Workflow SRS)
+
+Built in the "must-have" round:
+
+- **Status lifecycle (SRS 12).** Every case shows the furthest of the 15 stages it has reached, from New case to
+  Paid, closed. It is worked out from what has happened on the case (documents, team, facts typed, site visit,
+  decisions, draft handed over, returns, approval, sends, bill), so it cannot drift from the real state.
+- **Rework loop (SRS 9, 10).** The valuer can return the report to the drafter, ask for a new site visit, or ask for more
+  documents, each with a reason and an optional due date. The person gets a pop-up, the case page shows the request
+  and its round number, and sending the draft again or submitting the new visit answers it.
+- **Final report (SRS 11).** Approving stores the PDF with a report number (`<case>-<bank>-R<revision>`), the approval
+  time and approver, and a fingerprint. This is a record of the approval, not a legal e-signature. After approval the
+  report is locked; the valuer can reopen it for a revision, which becomes the next revision on approval.
+- **Comparison decisions (SRS 7).** For any difference or missing value a person records the outcome (document right,
+  site right, explained, not applicable, not available) and the reason. The decision is kept with who and when, and goes
+  stale if either value changes. Approval is blocked while a difference has no decision (unless RELAX_CHECKS is on).
+- **Never auto-resolve (SRS 16).** When two documents are typed differently and nobody has chosen, the report leaves the
+  box empty and says so, and the Compare page shows a difference.
+- **Source page, note, unit (SRS 5.1, 5.2).** Each typed value keeps the page it was read from, an optional note, who
+  typed it, and the unit an area was written in (sq m, sq yd, sq ft). Comparisons convert to sq m and show the original.
+- **Year of construction basis (SRS 6.2).** The inspector says how the year is known; an owner-stated or estimated year
+  is shown as "needs verification", never as verified.
+- **Document access (SRS 14).** A drafter or inspector can open files, facts and case records only for cases given to them.
+
+Still open: mobile and offline inspector app, configurable and versioned bank templates, valuation workings, legal
+e-signature, malware scanning, expiring links, document version history, taxes on the invoice, more case and
+extraction fields (owner and proposed buyer at registration, services required, plan numbers, and so on).

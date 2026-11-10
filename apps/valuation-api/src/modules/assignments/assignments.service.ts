@@ -13,6 +13,7 @@ import { AREA_FIELD_KEYS, MIN_OBSERVATIONS, MIN_PHOTOS, countObservations } from
 import { assessInspectionReadiness, assessReadiness, assessReviewReadiness, assessSubmissionReadiness } from './readiness.js';
 import { MailService } from '../../common/mail/mail.service.js';
 import { seenBy, withBilling } from './billing.js';
+import { lifecycleFor } from './lifecycle.js';
 import { IdsService } from '../ids/ids.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { CreateAssignmentDto, ListAssignmentsQuery, UpdateAssignmentDto } from './assignments.dto.js';
@@ -90,7 +91,9 @@ export class AssignmentsService {
       }),
       this.prisma.assignment.count({ where }),
     ]);
-    return { items: items.map((row) => seenBy(viewer, withBilling(row))), total, page: query.page, pageSize: query.pageSize };
+    const billed = items.map((row) => withBilling(row));
+    const stages = await lifecycleFor(this.prisma, firmId, billed);
+    return { items: billed.map((row) => ({ ...seenBy(viewer, row), lifecycle: stages.get(row.id) })), total, page: query.page, pageSize: query.pageSize };
   }
 
   // The most specific fee rule in force on the valuation date, if the firm has
@@ -109,7 +112,9 @@ export class AssignmentsService {
   async get(firmId: string, id: string, viewer?: { userId: string; role: string }) {
     const assignment = await this.prisma.assignment.findFirst({ where: { id, firmId }, select: assignmentSelect });
     if (!assignment || (viewer?.role === 'DRAFTER' && assignment.assignedDrafter?.id !== viewer.userId) || (viewer?.role === 'INSPECTOR' && assignment.assignedInspector?.id !== viewer.userId)) throw new NotFoundException('Assignment not found');
-    return seenBy(viewer, withBilling(assignment));
+    const billed = withBilling(assignment);
+    const stages = await lifecycleFor(this.prisma, firmId, [billed]);
+    return { ...seenBy(viewer, billed), lifecycle: stages.get(billed.id) };
   }
 
   // How ready the property file is for site inspection. Documents belong to

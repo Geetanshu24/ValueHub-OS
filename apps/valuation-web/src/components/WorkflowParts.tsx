@@ -1,14 +1,12 @@
 import { Link } from 'react-router-dom'
 import {
-  ASSIGNMENT_PRIORITY_LABELS, ASSIGNMENT_STATUS_LABELS, INTAKE_SOURCE_LABELS,
   type AssignmentPriority, type AssignmentStatus, type IntakeSource, type PropertyClass,
 } from '@value-hub/valuation-shared'
 import type { ReactNode } from 'react'
-import { formatDate } from './ui.tsx'
 
 export interface AssignmentHead {
   id: string; code: string; purpose: string; fee?: string | null; dueDate: string; status: AssignmentStatus; priority: AssignmentPriority; borrowerName: string | null; intakeSource: IntakeSource
-  bank: { name: string }; assignedValuer: { fullName: string }; property: { id: string; code: string; addressLine: string; propertyClass: PropertyClass }
+  bank: { name: string }; assignedValuer: { fullName: string }; assignedInspector?: { id: string; fullName: string } | null; property: { id: string; code: string; addressLine: string; propertyClass: PropertyClass }
 }
 export interface ReadinessItem { key: string; label: string; state: 'done' | 'todo' | 'warn'; detail: string; blocking: boolean }
 export interface Readiness { items: ReadinessItem[]; done: number; total: number; canProceed: boolean; complete: boolean }
@@ -58,21 +56,11 @@ export function dueLabel(due: string | Date, now = new Date()): { text: string; 
   return { text: `in ${days} day${days === 1 ? '' : 's'}`, tone: days <= 2 ? 'soon' : 'ok' }
 }
 
-export function StepHeader({ a, here, eyebrow, title, subtitle }: { a: AssignmentHead; here: number; eyebrow: string; title: string; subtitle: string }) {
-  const stepNow = STEP_OF_STATUS[a.status]
+// The top of a step page: a way back to the case and the title. Where the case stands is on the case page.
+export function StepHeader({ a, eyebrow, title, subtitle }: { a: AssignmentHead; here?: number; eyebrow: string; title: string; subtitle: string }) {
   return <>
-    <div className="pd-topline"><Link to={`/assignments/${a.id}`} className="pd-back">← <span>{a.code}</span></Link><span className="pd-secure"><i /> Secure workspace</span></div>
-    <header className="pd-heading"><div><p className="pd-eyebrow">VALUATION WORKFLOW <span>/</span> {eyebrow}</p><h1>{title}</h1><p>{subtitle}</p></div></header>
-    <nav className="pd-flow" aria-label="Valuation workflow">{FLOW.map((label, index) => {
-      const state = index < stepNow ? 'done' : index === stepNow ? 'now' : 'next'
-      return <Link key={label} to={index === here ? '#' : stepPath(index, a.id)} className={`pd-flow-step is-${state} ${index === here ? 'is-here' : ''}`} aria-current={index === here ? 'step' : undefined}><span>{state === 'done' ? '✓' : index + 1}</span><b>{label}</b></Link>
-    })}</nav>
-    <section className="pd-summary">
-      <div><small>Assignment</small><b>{a.code}</b></div><div><small>Bank</small><b>{a.bank.name}</b></div><div><small>Borrower</small><b>{a.borrowerName ?? '—'}</b></div><div><small>Purpose</small><b>{a.purpose}</b></div>
-      <div><small>Due</small><b>{formatDate(a.dueDate)}</b></div><div><small>Valuer</small><b>{a.assignedValuer.fullName}</b></div>
-      <div><small>Priority</small><b className={`pd-prio is-${a.priority.toLowerCase()}`}>{ASSIGNMENT_PRIORITY_LABELS[a.priority]}</b></div><div><small>Stage</small><b className="pd-stage">{ASSIGNMENT_STATUS_LABELS[a.status]}</b></div>
-      <div><small>Came in via</small><b>{INTAKE_SOURCE_LABELS[a.intakeSource]}</b></div>
-    </section>
+    <div className="pd-topline"><Link to={`/assignments/${a.id}`} className="pd-back">← <span>Back to {a.code}</span></Link></div>
+    <header className="pd-heading"><div><p className="pd-eyebrow">{eyebrow.replace(/^STEP \d+ · /, '')}</p><h1>{title}</h1><p>{subtitle}</p></div></header>
   </>
 }
 

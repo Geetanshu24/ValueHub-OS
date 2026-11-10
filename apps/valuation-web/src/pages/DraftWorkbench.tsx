@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { DOCUMENT_TYPE_LABELS, factLabel, type DocumentType, type Paginated } from '@value-hub/valuation-shared'
+import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, factLabel, type DocumentType, type Paginated } from '@value-hub/valuation-shared'
 import { ErrorText, errorMessage, PageHeader } from '../components/ui.tsx'
 import { api, fileBlobUrl } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
@@ -12,8 +12,13 @@ interface Assignment {
   property: { id: string; addressLine: string }
 }
 interface Doc { id: string; type: DocumentType; fileName: string; mimeType: string }
-interface Fact { fieldKey: string; extractedValue: string; verifiedValue: string | null; state: 'UNVERIFIED' | 'VERIFIED' | 'CORRECTED' | 'UNKNOWN'; useInReport: boolean }
-type Cell = { value: string; status: 'idle' | 'saving' | 'saved' | 'error' }
+interface Fact { fieldKey: string; extractedValue: string; verifiedValue: string | null; state: 'UNVERIFIED' | 'VERIFIED' | 'CORRECTED' | 'UNKNOWN'; useInReport: boolean; source?: string; unit?: string | null; pageNumber?: number; note?: string | null }
+type Cell = { value: string; unit: string; page: string; note: string; showNote?: boolean; status: 'idle' | 'saving' | 'saved' | 'error' }
+const UNITS = [['SQM', 'sq m'], ['SQYD', 'sq yd'], ['SQFT', 'sq ft']] as const
+const isAreaKey = (key: string) => /_sqm$/.test(key)
+const FACTOR: Record<string, number> = { SQM: 1, SQYD: 0.83612736, SQFT: 1 / 10.7639104 }
+// The same value in square metres, so 200 sq yd and 167.23 sq m are not shown as a difference.
+const normalised = (key: string, cell: { value: string; unit: string }) => { const v = cell.value.trim(); const n = Number(v.replace(/,/g, '')); return isAreaKey(key) && Number.isFinite(n) ? String(Number((n * (FACTOR[cell.unit] ?? 1)).toFixed(2))) : v.toLowerCase() }
 
 // What the drafter reads off each document, in the order the bank formats ask for it.
 const ROWS: { title: string; keys: { key: string; long?: boolean }[] }[] = [
@@ -23,10 +28,8 @@ const ROWS: { title: string; keys: { key: string; long?: boolean }[] }[] = [
   { title: 'Construction', keys: [{ key: 'year_of_construction' }, { key: 'construction_details', long: true }, { key: 'floor_number' }, { key: 'total_floors' }, { key: 'accommodation', long: true }] },
 ]
 
-const bestValue = (facts: Fact[], key: string) => {
-  const hit = [...facts].reverse().find((f) => f.fieldKey === key && f.state !== 'UNKNOWN')
-  return hit ? (hit.state === 'CORRECTED' ? hit.verifiedValue ?? hit.extractedValue : hit.extractedValue) : ''
-}
+const bestFact = (facts: Fact[], key: string) => [...facts].reverse().find((f) => f.fieldKey === key && f.state !== 'UNKNOWN')
+const factValue = (f?: Fact) => (f ? (f.state === 'CORRECTED' ? f.verifiedValue ?? f.extractedValue : f.extractedValue) : '')
 
 // The document on the right: images show directly, PDFs in the browser's viewer.
 function Viewer({ doc }: { doc: Doc | undefined }) {
@@ -56,8 +59,8 @@ export default function DraftWorkbench() {
   const assignment = useFetch<Assignment>(`/assignments/${id}`)
   const a = assignment.data
   const docs = useFetch<Paginated<Doc>>(a ? `/documents?propertyId=${a.property.id}&pageSize=100` : null)
-  // The instruction letter is the brief, not a source of facts.
-  const sources = (docs.data?.items ?? []).filter((d) => d.type !== 'BANK_INSTRUCTION')
+  // Every file on the case can be read; a wrongly typed file is fixed right here.
+  const sources = docs.data?.items ?? []
   const [selected, setSelected] = useState<string | null>(null)
   const [cells, setCells] = useState<Record<string, Cell>>({})
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +74,7 @@ export default function DraftWorkbench() {
     const picked: Record<string, string> = {}
     for (const [docId, facts] of entries) for (const f of facts) if (f.useInReport && f.state !== 'UNKNOWN') picked[f.fieldKey] = docId
     setChosen(picked)
-    for (const [docId, facts] of entries) for (const row of ROWS) for (const { key } of row.keys) next[cellId(docId, key)] = { value: bestValue(facts, key), status: 'idle' }
+    for (const [docId, facts] of entries) for (const row of ROWS) for (const { key } of row.keys) { const f = bestFact(facts, key); next[cellId(docId, key)] = { value: factValue(f), unit: f?.unit ?? 'SQM', page: f?.pageNumber && f.source !== 'OCR' ? String(f.pageNumber) : '', note: f?.note ?? '', status: 'idle' } }
     setCells(next)
   }, [])
   useEffect(() => {
@@ -81,17 +84,18 @@ export default function DraftWorkbench() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docs.data, load])
 
-  const edit = (docId: string, key: string, value: string) => setCells((cur) => ({ ...cur, [cellId(docId, key)]: { value, status: 'idle' } }))
+  const blank: Cell = { value: '', unit: 'SQM', page: '', note: '', status: 'idle' }
+  const edit = (docId: string, key: string, patch: Partial<Cell>) => setCells((cur) => ({ ...cur, [cellId(docId, key)]: { ...(cur[cellId(docId, key)] ?? blank), ...patch, status: 'idle' } }))
   const save = async (docId: string, key: string) => {
     const cell = cells[cellId(docId, key)]
     if (!cell || cell.status === 'saving') return
     setCells((cur) => ({ ...cur, [cellId(docId, key)]: { ...cell, status: 'saving' } }))
     try {
-      await api.put(`/documents/${docId}/fields/${key}`, { value: cell.value })
-      setCells((cur) => ({ ...cur, [cellId(docId, key)]: { value: cell.value, status: 'saved' } }))
+      await api.put(`/documents/${docId}/fields/${key}`, { value: cell.value, ...(isAreaKey(key) && { unit: cell.unit }), ...(cell.page && { page: Number(cell.page) }), note: cell.note })
+      setCells((cur) => ({ ...cur, [cellId(docId, key)]: { ...cell, status: 'saved' } }))
       setError(null)
     } catch (caught) {
-      setCells((cur) => ({ ...cur, [cellId(docId, key)]: { value: cell.value, status: 'error' } }))
+      setCells((cur) => ({ ...cur, [cellId(docId, key)]: { ...cell, status: 'error' } }))
       setError(`${factLabel(key)}: ${errorMessage(caught)}`)
     }
   }
@@ -102,8 +106,8 @@ export default function DraftWorkbench() {
     catch (caught) { setError(`${factLabel(key)}: ${errorMessage(caught)}`) }
   }
   const choice = (key: string) => {
-    const filled = sources.map((d) => ({ d, value: (cells[cellId(d.id, key)]?.value ?? '').trim() })).filter((x) => x.value)
-    const differs = new Set(filled.map((x) => x.value.toLowerCase())).size > 1
+    const filled = sources.map((d) => ({ d, value: (cells[cellId(d.id, key)]?.value ?? '').trim(), norm: normalised(key, cells[cellId(d.id, key)] ?? blank) })).filter((x) => x.value)
+    const differs = new Set(filled.map((x) => x.norm)).size > 1
     const pickedDoc = filled.find((x) => x.d.id === chosen[key])?.d.id ?? filled[0]?.d.id
     return { filled, differs, pickedDoc }
   }
@@ -111,62 +115,78 @@ export default function DraftWorkbench() {
   if (assignment.error) return <ErrorText message={assignment.error} />
   if (!a) return <p className="pd-muted">Loading…</p>
   const viewing = sources.find((d) => d.id === selected) ?? sources[0]
+  const filledIn = (docId: string) => ROWS.flatMap((g) => g.keys).filter(({ key }) => (cells[cellId(docId, key)]?.value ?? '').trim()).length
+  const changeType = async (doc: Doc, type: DocumentType) => {
+    try { await api.patch(`/documents/${doc.id}`, { type }); docs.reload(); setError(null) } catch (caught) { setError(errorMessage(caught)) }
+  }
 
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Drafter workbench" title={`${a.code} · read the documents`} subtitle="Left: what each document says. Right: the document. Type what you read; every box saves when you leave it."
+      <PageHeader eyebrow="Drafter" title={`${a.code} · read the documents`} subtitle="Open a document and type what it says. Every box saves by itself."
         action={<Link to={`/assignments/${id}`} className="pd-btn is-ghost">Back to case</Link>} />
       <div className="wb-brief">
         <span><small>Client</small><b>{a.borrowerName ?? '—'}</b></span>
         <span><small>Phone</small><b>{a.clientPhone ?? '—'}</b></span>
         <span><small>Bank</small><b>{a.bank.name}{a.branch ? ` · ${[a.branch.name, a.branch.city, a.branch.district, a.branch.state].filter(Boolean).join(', ')}` : ''}</b></span>
         <span><small>Purpose</small><b>{a.purpose}</b></span>
-        <span><small>Logged in</small><b>{new Date(a.receivedAt).toLocaleDateString('en-IN')}</b></span>
       </div>
       <ErrorText message={error} />
-      {sources.length === 0 ? <div className="pd-empty"><b>No documents to read yet</b><p>Upload the deed, plans and other papers under Property &amp; documents.</p><Link to={`/assignments/${id}/documents`} className="pd-btn is-primary">Go to documents</Link></div> : (
+      {sources.length === 0 ? <div className="pd-empty"><b>No documents on this case yet</b><p>Upload the deed, plans and other papers first.</p><Link to={`/assignments/${id}/documents`} className="pd-btn is-primary">Upload documents</Link></div> : <>
+        <div className="wb-tabs" role="tablist" aria-label="Documents">
+          {sources.map((d) => (
+            <button key={d.id} type="button" role="tab" aria-selected={d.id === viewing?.id} className={`wb-tab ${d.id === viewing?.id ? 'is-on' : ''}`} onClick={() => setSelected(d.id)} title={d.fileName}>
+              <b>{DOCUMENT_TYPE_LABELS[d.type]}</b><small>{d.fileName}</small><em>{filledIn(d.id) > 0 ? `${filledIn(d.id)} filled` : 'not started'}</em>
+            </button>
+          ))}
+        </div>
         <div className="wb-split">
           <section className="wb-left">
-            <div className="wb-scroll">
-              <table className="wb-table">
-                <thead>
-                  <tr>
-                    <th>Fact</th>
-                    {sources.map((d) => <th key={d.id} className={d.id === viewing?.id ? 'is-on' : ''}><button type="button" onClick={() => setSelected(d.id)} title={d.fileName}>{DOCUMENT_TYPE_LABELS[d.type]}<small>{d.fileName}</small></button></th>)}
-                    <th className="wb-uses-head"><span>Report uses</span><small>for the bank format</small></th>
-                  </tr>
-                </thead>
-                {ROWS.map((group) => (
-                  <tbody key={group.title}>
-                    <tr className="wb-group"><td colSpan={sources.length + 2}>{group.title}</td></tr>
-                    {group.keys.map(({ key, long }) => {
-                      const pick = choice(key)
-                      return (
-                      <tr key={key} className={pick.differs ? 'is-differs' : ''}>
-                        <th scope="row">{factLabel(key)}</th>
-                        {sources.map((d) => {
-                          const cell = cells[cellId(d.id, key)] ?? { value: '', status: 'idle' }
-                          const props = { value: cell.value, disabled: !canEdit, onFocus: () => setSelected(d.id), onChange: (e: { target: { value: string } }) => edit(d.id, key, e.target.value), onBlur: () => void save(d.id, key), 'aria-label': `${factLabel(key)}, ${DOCUMENT_TYPE_LABELS[d.type]}` }
-                          return <td key={d.id} className={`is-${cell.status}`}>{long ? <textarea rows={2} {...props} /> : <input {...props} />}</td>
-                        })}
-                        <td className="wb-uses">
-                          {pick.filled.length === 0 ? <span className="pd-muted">—</span>
-                            : !pick.differs ? <span title="All documents agree">{pick.filled[0].value}</span>
-                            : <><b className="wb-differs">Documents differ</b>
-                              <select aria-label={`Value the report uses for ${factLabel(key)}`} value={pick.pickedDoc} disabled={!canEdit} onChange={(e) => void useValue(e.target.value, key)}>
-                                {pick.filled.map((x) => <option key={x.d.id} value={x.d.id}>{DOCUMENT_TYPE_LABELS[x.d.type]}: {x.value.length > 40 ? `${x.value.slice(0, 40)}…` : x.value}</option>)}
-                              </select></>}
-                        </td>
-                      </tr>
-                      )
-                    })}
-                  </tbody>
-                ))}
-              </table>
+            <div className="wb-typebar">
+              <label>This document is a
+                <select className="ui-input" value={viewing?.type} disabled={!canEdit} onChange={(e) => viewing && void changeType(viewing, e.target.value as DocumentType)}>
+                  {DOCUMENT_TYPES.map((t) => <option key={t} value={t}>{DOCUMENT_TYPE_LABELS[t]}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="wb-scroll wb-form">
+              {viewing && ROWS.map((group) => (
+                <div key={group.title} className="wb-sec">
+                  <h3>{group.title}</h3>
+                  {group.keys.map(({ key, long }) => {
+                    const cell = cells[cellId(viewing.id, key)] ?? blank
+                    const pick = choice(key)
+                    const props = { value: cell.value, disabled: !canEdit, onChange: (e: { target: { value: string } }) => edit(viewing.id, key, { value: e.target.value }), onBlur: () => void save(viewing.id, key) }
+                    return (
+                      <label key={key} className={`wb-field is-${cell.status}`}>
+                        <span className="wb-labelrow">
+                          <span>{factLabel(key).replace(/\s*\(sq\. ?m\)/i, '')}</span>
+                          <span className="wb-meta">
+                            p.<input type="number" min={1} className="wb-page" aria-label={`Page of ${factLabel(key)}`} placeholder="–" value={cell.page} disabled={!canEdit} onChange={(e) => edit(viewing.id, key, { page: e.target.value })} onBlur={() => void save(viewing.id, key)} />
+                            {canEdit && <button type="button" className="chk-link" onClick={() => edit(viewing.id, key, { showNote: !cell.showNote })}>{cell.note ? 'note ✓' : '+ note'}</button>}
+                          </span>
+                        </span>
+                        <span className="wb-inputrow">
+                          {long ? <textarea rows={2} {...props} /> : <input {...props} />}
+                          {isAreaKey(key) && <select className="wb-unit" aria-label={`Unit of ${factLabel(key)}`} value={cell.unit} disabled={!canEdit} onChange={(e) => { edit(viewing.id, key, { unit: e.target.value }); window.setTimeout(() => void save(viewing.id, key), 0) }}>{UNITS.map(([u, l]) => <option key={u} value={u}>{l}</option>)}</select>}
+                        </span>
+                        {(cell.showNote || cell.note) && <input className="wb-note" placeholder="Note (where exactly, or anything to remember)" value={cell.note} disabled={!canEdit} onChange={(e) => edit(viewing.id, key, { note: e.target.value })} onBlur={() => void save(viewing.id, key)} />}
+                        {pick.differs && cell.value.trim() && (
+                          <span className="wb-differ">
+                            The documents say different things here. The report uses:
+                            <select aria-label={`Value the report uses for ${factLabel(key)}`} value={pick.pickedDoc} disabled={!canEdit} onChange={(e) => void useValue(e.target.value, key)}>
+                              {pick.filled.map((x) => <option key={x.d.id} value={x.d.id}>{DOCUMENT_TYPE_LABELS[x.d.type]}: {x.value.length > 40 ? `${x.value.slice(0, 40)}…` : x.value}</option>)}
+                            </select>
+                          </span>
+                        )}
+                      </label>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
             <div className="wb-actions">
-              <small className="pd-muted">Same fact in several documents? Fill each column. Differences are checked later.</small>
-              <button type="button" className="pd-btn is-primary" onClick={() => navigate(`/assignments/${id}/compare`)}>Done — compare with the site →</button>
+              <small className="pd-muted">Do the same for each document above. Leave a box empty if the document does not say.</small>
+              <button type="button" className="pd-btn is-primary" onClick={() => navigate(`/assignments/${id}/compare`)}>Done →</button>
             </div>
           </section>
           <aside className="wb-right">
@@ -174,7 +194,7 @@ export default function DraftWorkbench() {
             <Viewer doc={viewing} />
           </aside>
         </div>
-      )}
+      </>}
     </div>
   )
 }

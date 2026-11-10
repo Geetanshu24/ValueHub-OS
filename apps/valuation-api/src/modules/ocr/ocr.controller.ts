@@ -1,8 +1,10 @@
-import { Controller, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Controller, HttpCode, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { DocumentAccessGuard } from '../../common/auth/document-access.guard.js';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import { OcrService } from './ocr.service.js';
 
+@UseGuards(DocumentAccessGuard)
 @Controller()
 export class OcrController {
   constructor(private readonly ocr: OcrService) {}

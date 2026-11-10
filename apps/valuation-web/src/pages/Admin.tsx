@@ -359,7 +359,8 @@ function Account() {
   )
 }
 
-const TABS = ['Users', 'Banks', 'Fees', 'Checklist', 'Retention', 'Audit log', 'Account'] as const
+// The review checklist, retention and audit log are not shown for now; their screens are kept below.
+const TABS = ['Users', 'Banks', 'Fees', 'Account'] as const
 
 export default function Admin() {
   const { user } = useAuth()
@@ -369,7 +370,7 @@ export default function Admin() {
 
   return (
     <div>
-      <PageHeader eyebrow="BUSINESS" title="Administration" subtitle="People, banks, fees, the review checklist, retention and the audit trail." />
+      <PageHeader eyebrow="BUSINESS" title="Administration" subtitle="Your people, the banks and branches, and the fees." />
       <div className="pd-segment mb-4 flex-wrap" role="tablist">
         {visible.map((name) => (
           <button key={name} type="button" onClick={() => setTab(name)} role="tab" aria-selected={tab === name} className={tab === name ? 'is-on' : ''}>
@@ -380,10 +381,9 @@ export default function Admin() {
       {tab === 'Users' && <Users />}
       {tab === 'Banks' && <Banks />}
       {tab === 'Fees' && <Fees />}
-      {tab === 'Checklist' && <Checklist />}
-      {tab === 'Retention' && <Retention />}
-      {tab === 'Audit log' && <AuditLog />}
       {tab === 'Account' && <Account />}
     </div>
   )
 }
+
+export { AuditLog, Checklist, Retention }

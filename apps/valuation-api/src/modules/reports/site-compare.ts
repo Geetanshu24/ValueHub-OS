@@ -2,6 +2,15 @@ import { AREA_TOLERANCE_PERCENT, factLabel } from '@value-hub/valuation-shared';
 
 export type CompareStatus = 'match' | 'differs' | 'document_only' | 'site_only' | 'none' | 'check';
 
+export interface Decision {
+  outcome: string;
+  reason: string;
+  by: string | null;
+  at: Date;
+  // The values the person saw. If either has changed since, the decision no longer counts.
+  stale: boolean;
+}
+
 export interface CompareRow {
   key: string;
   label: string;
@@ -11,6 +20,7 @@ export interface CompareRow {
   site: string;
   status: CompareStatus;
   note?: string;
+  decision?: Decision;
 }
 
 export interface SiteSide {
@@ -71,13 +81,23 @@ const SPECS: Spec[] = [
   { key: 'road_width', site: (s) => (s.observations.road_width_ft ? `${s.observations.road_width_ft} ft` : ''), kind: 'info' },
 ];
 
+// A year the inspector estimated or was told is never shown as verified, even when it equals the documents.
+function withYearBasis(row: CompareRow, site: SiteSide): CompareRow {
+  if (row.key !== 'year_of_construction' || !row.site) return row;
+  const basis = (site.observations.site_year_basis ?? '').trim();
+  if (!basis || basis === 'Documentary record') return row;
+  return { ...row, status: row.document ? 'check' : row.status, note: `Site year is ${basis.toLowerCase()}, so it needs verification` };
+}
+
 // As per documents against as per site, one row per fact. Numbers are checked with the same tolerance
 // the inspection uses; wording is matched loosely; facts that cannot be auto-checked are shown for a person to judge.
-export function compareFacts(facts: Record<string, string>, documentFacts: { label: string; facts: Record<string, string> }[], site: SiteSide): CompareRow[] {
-  return SPECS.map((spec) => {
+export function compareFacts(facts: Record<string, string>, documentFacts: { label: string; facts: Record<string, string>; shown?: Record<string, string> }[], site: SiteSide, conflicts: string[] = []): CompareRow[] {
+  const rows = SPECS.map((spec): CompareRow => {
     const document = (facts[spec.key] ?? '').trim();
     const siteValue = spec.site(site).trim();
-    const fromDocuments = documentFacts.flatMap((d) => (d.facts[spec.key]?.trim() ? [{ label: d.label, value: d.facts[spec.key].trim() }] : []));
+    const fromDocuments = documentFacts.flatMap((d) => (d.facts[spec.key]?.trim() ? [{ label: d.label, value: (d.shown?.[spec.key] ?? d.facts[spec.key]).trim() }] : []));
+    // Documents a person filled in differently: the system does not choose, so it is a difference until someone does.
+    if (conflicts.includes(spec.key)) return { key: spec.key, label: factLabel(spec.key), document: 'The documents disagree', fromDocuments, site: spec.site(site).trim(), status: 'differs' as const, note: 'Choose which document the report uses, in the workbench' };
     const row: CompareRow = { key: spec.key, label: factLabel(spec.key), document, fromDocuments, site: siteValue, status: 'none' };
     if (!document && !siteValue) return row;
     if (!siteValue) return { ...row, status: 'document_only' };
@@ -91,4 +111,5 @@ export function compareFacts(facts: Record<string, string>, documentFacts: { lab
     const pct = d === 0 ? 100 : (Math.abs(s - d) / d) * 100;
     return pct <= AREA_TOLERANCE_PERCENT ? { ...row, status: 'match' } : { ...row, status: 'differs', note: `Site is ${s > d ? 'larger' : 'smaller'} by ${pct.toFixed(1)}%` };
   });
+  return rows.map((row) => withYearBasis(row, site));
 }
