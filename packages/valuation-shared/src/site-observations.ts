@@ -69,6 +69,13 @@ export const OBSERVATION_SECTIONS: readonly ObservationSection[] = [
     hint: 'How the property was identified and anything unusual',
     fields: [
       { key: 'identified_by', label: 'Property identified by', type: 'text' },
+      { key: 'plot_number_seen', label: 'Plot / house number seen on site', type: 'text' },
+      { key: 'boundary_north', label: 'North side (what is there)', type: 'text' },
+      { key: 'boundary_south', label: 'South side (what is there)', type: 'text' },
+      { key: 'boundary_east', label: 'East side (what is there)', type: 'text' },
+      { key: 'boundary_west', label: 'West side (what is there)', type: 'text' },
+      { key: 'oc_sighted', label: 'Occupation certificate seen', type: 'select', options: ['Sighted', 'Not sighted', 'Not applicable'] },
+      { key: 'charges_seen', label: 'Any notice, charge or dispute seen', type: 'select', options: ['None seen', 'Seen (see remarks)'] },
       { key: 'boundaries_match', label: 'Boundaries match the documents', type: 'select', options: ['Yes', 'No (see remarks)', 'Not checked'] },
       { key: 'remarks', label: 'Remarks', type: 'textarea' },
     ],

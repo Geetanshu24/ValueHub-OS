@@ -199,6 +199,7 @@ model Firm {
   auditEvents     AuditEvent[]
   idSequences     IdSequence[]
   bankReportForms BankReportForm[]
+  marketRates     MarketRate[]
 }
 
 model User {
@@ -480,6 +481,8 @@ model Discrepancy {
   material       Boolean           @default(true)
   status         DiscrepancyStatus @default(UNRESOLVED)
   resolutionNote String?
+  // The standard treatment the valuer chose (see TREATMENTS in the shared package), if any.
+  treatment      String?
   resolvedById   String?
   resolvedAt     DateTime?
   createdAt      DateTime          @default(now())
@@ -849,4 +852,29 @@ model BankReportForm {
 
   @@unique([assignmentId, format])
   @@index([firmId])
+}
+
+// The firm's own record of what property is selling or being offered for, kept across assignments.
+// Private to the firm: nothing here is shared or sent anywhere.
+model MarketRate {
+  id            String        @id @default(uuid())
+  firmId        String
+  locality      String // the micro-market, e.g. "Sector 14, Faridabad"
+  propertyClass PropertyClass
+  kind          String // TRANSACTION | ASKING | CIRCLE
+  rate          Decimal       @db.Decimal(14, 2) // as quoted, per `unit`
+  unit          String // SQ_FT | SQ_YD | SQ_M
+  ratePerSqm    Decimal       @db.Decimal(14, 2) // the same rate per sq m, to compare like with like
+  rateLow       Decimal?      @db.Decimal(14, 2) // the range seen, per `unit`, when the source gave one
+  rateHigh      Decimal?      @db.Decimal(14, 2)
+  observedOn    DateTime      @db.Date
+  source        String // dealer, website, registry ...
+  detail        String? // size, floor, contact, anything that explains the rate
+  recordedById  String
+  createdAt     DateTime      @default(now())
+
+  firm Firm @relation(fields: [firmId], references: [id])
+
+  @@index([firmId, locality])
+  @@index([firmId, observedOn])
 }

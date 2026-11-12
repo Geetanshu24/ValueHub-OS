@@ -1,4 +1,4 @@
-import { IsIn, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { DISCREPANCY_RESOLUTIONS, type DiscrepancyResolution } from '@value-hub/valuation-shared';
 
 export class ResolveDiscrepancyDto {
@@ -10,4 +10,10 @@ export class ResolveDiscrepancyDto {
   @MinLength(10)
   @MaxLength(2000)
   resolutionNote!: string;
+
+  // The standard treatment chosen on the comparison page, kept with the note.
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  treatment?: string;
 }

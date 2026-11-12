@@ -1,3 +1,4 @@
+import Timeline from '../components/Timeline.tsx'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
@@ -172,6 +173,7 @@ export default function AssignmentDetail() {
         <div className="flex flex-wrap gap-2">
           <Link to={`/assignments/${id}/documents`} className={ghostButtonClass}>Property &amp; Documents</Link>
           <Link to={`/assignments/${id}/inspection`} className={ghostButtonClass}>Site Inspection</Link>
+          <Link to={`/assignments/${id}/comparison`} className={ghostButtonClass}>Documents vs Site</Link>
           <Link to={`/assignments/${id}/valuation`} className={ghostButtonClass}>Valuation</Link>
           <Link to={`/assignments/${id}/bank-report`} className={ghostButtonClass}>Bank report (Word / PDF)</Link>
           <Link to={`/assignments/${id}/review`} className={ghostButtonClass}>Quality Review</Link>
@@ -181,6 +183,7 @@ export default function AssignmentDetail() {
           ))}
         </div>
       </Card>
+      <Timeline assignmentId={id} />
     </div>
   )
 }

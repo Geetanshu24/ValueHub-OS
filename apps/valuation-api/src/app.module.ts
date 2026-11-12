@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AiModule } from './modules/ai/ai.module.js';
+import { ComparisonModule } from './modules/comparison/comparison.module.js';
+import { MarketRatesModule } from './modules/market-rates/market-rates.module.js';
+import { LifecycleModule } from './modules/lifecycle/lifecycle.module.js';
 import { AuditModule } from './common/audit/audit.module.js';
 import { StorageModule } from './common/storage/storage.module.js';
 import { MailModule } from './common/mail/mail.module.js';
@@ -39,6 +42,9 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PrismaModule,
     AuditModule,
     AiModule,
+    ComparisonModule,
+    LifecycleModule,
+    MarketRatesModule,
     StorageModule,
     MailModule,
     IdsModule,

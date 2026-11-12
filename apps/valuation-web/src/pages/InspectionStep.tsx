@@ -5,7 +5,7 @@ import {
   AREA_FIELD_KEYS, AREA_TOLERANCE_PERCENT, ASSIGNMENT_STATUS_LABELS, DISCREPANCY_RESOLUTIONS, MEASUREMENT_LABELS, MEASUREMENT_METHODS, OBSERVATION_SECTIONS, PHOTO_CATEGORIES, factLabel,
   type DiscrepancyStatus, type InspectionStatus,
 } from '@value-hub/valuation-shared'
-import { ReadyCard, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
+import { ReadyCard, StageBanner, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
 import { ErrorText, errorMessage } from '../components/ui.tsx'
 import { api, fileBlobUrl } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
@@ -199,8 +199,13 @@ export default function InspectionStep() {
   if (!a) return <div className="pd-shell"><p className="pd-muted">Loading assignment…</p></div>
 
   return <div className="pd-shell">
+    <StageBanner icon="⛑" title={`${visit?.inspector.fullName ?? a.assignedValuer.fullName} · Field Site Inspector`} tag={visit && locked(visit.status) ? 'Field Certified' : undefined} line={`Case Ref: ${a.code}${visit ? ` · Scheduled: ${when(visit.visitedAt)}` : ''}`} asideLabel="Inspection Progress" aside={visit ? (STAGES.find(([k]) => k === visit.status)?.[1] ?? visit.status) : 'Not scheduled'} />
     <StepHeader a={a} here={2} eyebrow="STEP 3 · SITE INSPECTION" title="Site Inspection" subtitle="Visit the property, measure it, photograph it and record what you see. Differences from the documents are flagged, never overwritten." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
+    <div className="brief-card"><div className="brief-card-head"><b>Pre-filled case briefing (from documents, for reference only)</b><span>Strict rule: record ACTUAL site observations independently</span></div>
+      <div className="brief-grid"><div><small>Property as per documents</small><b>{a.property.addressLine}</b></div>
+        <div><small>Documented areas</small><b>{(context.data?.documentedAreas ?? []).length ? (context.data?.documentedAreas ?? []).map((d) => `${factLabel(d.fieldKey)}: ${fmt(d.value)} sq m`).join(' · ') : 'None verified yet'}</b></div>
+        <div><small>Borrower</small><b>{a.borrowerName ?? 'Not recorded'}</b></div><div><small>Bank</small><b>{a.bank.name}</b></div></div></div>
     <ErrorText message={error ?? assignment.error ?? context.error ?? visits.error ?? discrepancies.error} />
 
     <div className="pd-grid">

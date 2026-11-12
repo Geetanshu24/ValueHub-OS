@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ASSIGNMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS, type DocumentType } from '@value-hub/valuation-shared'
 import InvoiceCard, { RaiseInvoice, type Invoice } from '../components/InvoiceBlock.tsx'
-import { ReadyCard, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
+import { ReadyCard, StageBanner, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
 import { ErrorText, errorMessage, formatInr, formatDate } from '../components/ui.tsx'
 import { api, openFile, type Paginated } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
@@ -122,6 +122,7 @@ export default function SubmissionStep() {
   const emailBlocked = send.channel === 'EMAIL' && ctx && !ctx.emailEnabled
 
   return <div className="pd-shell">
+    <StageBanner icon="✉" title="Dispatch & Billing" line={`Case Ref: ${a.code} · ${a.bank.name}`} asideLabel="Status" aside={stage.replace('_', ' ')} />
     <StepHeader a={a} here={5} eyebrow="STEP 6 · APPROVAL & SUBMISSION" title="Approval & Submission" subtitle="Lock the final report, send it to the bank, record that it arrived, and answer whatever the bank asks next." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
     <ErrorText message={error ?? context.error ?? submissions.error ?? queries.error} />

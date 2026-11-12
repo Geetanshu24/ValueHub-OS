@@ -69,6 +69,8 @@ export const FACT_LABELS: Record<string, string> = {
   property_tax_id: 'Property tax ID',
   water_connection_no: 'Water connection no.',
   developer_name: 'Developer',
+  road_width: 'Approach road width',
+  construction_year: 'Year of construction',
 };
 
 export const factLabel = (key: string): string =>

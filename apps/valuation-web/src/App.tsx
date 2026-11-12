@@ -19,6 +19,8 @@ import InspectionWorkspace from './pages/InspectionWorkspace.tsx'
 import Login from './pages/Login.tsx'
 import RevisionDesk from './pages/RevisionDesk.tsx'
 import BankReport from './pages/BankReport.tsx'
+import ComparisonPage from './pages/Comparison.tsx'
+import RateBank from './pages/RateBank.tsx'
 import ReportStudio from './pages/ReportStudio.tsx'
 import ValuationWorkspace from './pages/ValuationWorkspace.tsx'
 import ResetPassword from './pages/ResetPassword.tsx'
@@ -43,6 +45,7 @@ export default function App() {
         <Route path="assignments/:id/inspection" element={<InspectionStep />} />
         <Route path="assignments/:id/valuation" element={<ValuationStep />} />
         <Route path="assignments/:id/bank-report" element={<BankReport />} />
+        <Route path="assignments/:id/comparison" element={<ComparisonPage />} />
         <Route path="assignments/:id/review" element={<QualityReview />} />
         <Route path="assignments/:id/submission" element={<SubmissionStep />} />
         <Route path="admin" element={<Admin />} />
@@ -53,6 +56,7 @@ export default function App() {
         <Route path="reports" element={<ReportStudio />} />
         <Route path="revisions" element={<RevisionDesk />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="rate-bank" element={<RateBank />} />
         <Route path="evidence" element={<EvidenceVault />} />
         {SCREENS.filter((screen) => !screen.built).map((screen) => (
           <Route key={screen.path} path={screen.path.slice(1)} element={<Placeholder screen={screen} />} />

@@ -1,0 +1,1 @@
+ALTER TABLE "MarketRate" ADD COLUMN "rateLow" DECIMAL(14,2), ADD COLUMN "rateHigh" DECIMAL(14,2);

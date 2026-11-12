@@ -34,6 +34,10 @@ const assignmentSelect = {
   branch: { select: { id: true, name: true } },
   property: { select: { id: true, code: true, addressLine: true, propertyClass: true } },
   assignedValuer: { select: { id: true, fullName: true } },
+  // For the case register: who inspected, the latest value, and how much of the fee has come in.
+  inspections: { orderBy: { visitedAt: 'desc' }, take: 1, select: { inspector: { select: { fullName: true } } } },
+  valuations: { orderBy: { versionNumber: 'desc' }, take: 1, select: { totalValue: true, status: true } },
+  invoices: { where: { status: { not: 'CANCELLED' } }, select: { amount: true, payments: { select: { amount: true, voidedAt: true } } } },
 } satisfies Prisma.AssignmentSelect;
 
 // No further work is due once an assignment reaches one of these.
@@ -56,8 +60,18 @@ export class AssignmentsService {
       ...(query.status && { status: query.status }),
       ...(query.bankId && { bankId: query.bankId }),
       ...(query.propertyId && { propertyId: query.propertyId }),
+      ...(query.propertyClass && { property: { propertyClass: query.propertyClass } }),
       ...(query.assignedValuerId && { assignedValuerId: query.assignedValuerId }),
-      ...(q && { code: { contains: q, mode: 'insensitive' } }),
+      // The search box looks across the code, the borrower, the property and the bank.
+      ...(q && {
+        OR: [
+          { code: { contains: q, mode: 'insensitive' } },
+          { borrowerName: { contains: q, mode: 'insensitive' } },
+          { property: { addressLine: { contains: q, mode: 'insensitive' } } },
+          { property: { khasraNumbers: { has: q } } },
+          { bank: { name: { contains: q, mode: 'insensitive' } } },
+        ],
+      }),
       ...((query.overdue || query.dueFrom || query.dueTo) && {
         dueDate: {
           ...(query.overdue && { lt: startOfToday() }),

@@ -18,6 +18,7 @@ const discrepancySelect = {
   material: true,
   status: true,
   resolutionNote: true,
+  treatment: true,
   resolvedAt: true,
   createdAt: true,
 } satisfies Prisma.DiscrepancySelect;
@@ -51,6 +52,7 @@ export class DiscrepanciesService {
         data: {
           status: dto.outcome,
           resolutionNote: dto.resolutionNote,
+          treatment: dto.treatment ?? null,
           resolvedById: actorId,
           resolvedAt: new Date(),
         },

@@ -46,6 +46,8 @@ export const AI_FACTS: Record<string, string> = {
   property_tax_id: 'Property tax ID / assessment number, if the document is a tax receipt.',
   water_connection_no: 'Water connection / consumer number, if the document is a water bill.',
   developer_name: 'Developer / builder / colonizer.',
+  road_width: 'Width of the approach road with its unit, e.g. "30 ft" or "9 m".',
+  construction_year: 'Year the building was constructed or completed, if stated.',
   market_listing_1: 'From a property-website or dealer screenshot: one comparable listing, written "dealer or project | contact number | size | price or rate | location".',
   market_listing_2: 'A second comparable listing, same format.',
   market_listing_3: 'A third comparable listing, same format.',

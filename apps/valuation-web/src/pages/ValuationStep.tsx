@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ASSIGNMENT_STATUS_LABELS, PROPERTY_CLASS_LABELS, type PropertyClass } from '@value-hub/valuation-shared'
-import { ReadyCard, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
+import { ReadyCard, StageBanner, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
 import { ErrorText, errorMessage, formatInr } from '../components/ui.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
@@ -162,6 +162,7 @@ export default function ValuationStep() {
   const counted = (calc?.result.lines ?? []).filter((l) => l.treatment === 'SEPARATELY_VALUED')
 
   return <div className="pd-shell">
+    <StageBanner icon="₹" title="Draft Valuation" tag={latest ? `Version ${latest.versionNumber}` : undefined} line={`Case Ref: ${a.code} · ${a.property.addressLine}`} asideLabel="Drafter" aside={a.assignedValuer.fullName} />
     <StepHeader a={a} here={3} eyebrow="STEP 4 · VALUATION WORKINGS" title="Valuation Workings" subtitle="Turn the site findings and market evidence into a value. Every rate needs a source and every adjustment a reason." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
     <ErrorText message={error ?? context.error ?? versions.error} />

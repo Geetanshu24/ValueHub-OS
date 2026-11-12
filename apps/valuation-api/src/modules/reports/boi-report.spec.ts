@@ -50,6 +50,13 @@ describe('prefill', () => {
     expect(out.lg_13a).toBe('Consumer no. 123456');
   });
 
+  it('puts the valuer\'s notes on documents-versus-site differences into the report', () => {
+    const out = prefillBoi({ ...input, disclosures: { built_up_area_sqm: 'Excess area is excluded from the valuation.', occupation_certificate: 'OC to be obtained by the bank.' } });
+    expect(out.violations).toBe('Excess area is excluded from the valuation.');
+    expect(out.tp_16).toBe('OC to be obtained by the bank.');
+    expect(out.b_map_comments).toContain('OC to be obtained');
+  });
+
   it('never suggests an "as per actual" site measure it has not seen', () => {
     expect(prefill.boundary_north_actual).toBeUndefined();
     expect(prefill.dimension_north_actual).toBeUndefined();

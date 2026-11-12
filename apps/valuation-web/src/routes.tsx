@@ -17,6 +17,7 @@ export const SCREENS: ScreenRoute[] = [
   { path: '/reports', label: 'Report Studio', phase: 1, built: true },
   { path: '/revisions', label: 'Revision / Query Desk', phase: 2, built: true },
   { path: '/accounts', label: 'Accounts', phase: 2, built: true },
+  { path: '/rate-bank', label: 'Rate Bank', phase: 2, built: true },
   { path: '/evidence', label: 'Evidence Vault', phase: 3, built: true },
   { path: '/admin', label: 'Administration', phase: 2, built: true },
 ]

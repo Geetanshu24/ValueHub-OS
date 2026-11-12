@@ -146,6 +146,9 @@ export class BankReportService {
       own.set(document.id, perDocument);
     }
 
+    const resolved = await this.prisma.discrepancy.findMany({ where: { assignmentId, firmId, status: { in: ['RESOLVED', 'DISCLOSED'] }, resolutionNote: { not: null } }, orderBy: { resolvedAt: 'asc' }, select: { fieldKey: true, resolutionNote: true } });
+    const disclosures = Object.fromEntries(resolved.map((d) => [d.fieldKey, d.resolutionNote as string]));
+
     const boundaries = (assignment.property.boundaries ?? null) as Partial<Record<'north' | 'south' | 'east' | 'west', string>> | null;
     const prefill = format.prefill({
       today: new Date(),
@@ -178,6 +181,7 @@ export class BankReportService {
       inspection: inspection ? { visitedAt: inspection.visitedAt, latitude: inspection.latitude === null ? null : Number(inspection.latitude), longitude: inspection.longitude === null ? null : Number(inspection.longitude) } : null,
       valuation: valuation ? { totalValue: Number(valuation.totalValue), adoptedAreaSqm: Number(valuation.adoptedAreaSqm) } : null,
       facts: Object.fromEntries([...best].map(([key, v]) => [key, v.value])),
+      disclosures,
       documents: documents
         .filter((d) => d.type !== 'BANK_INSTRUCTION' && d.type !== 'OTHER')
         .map((d) => ({ type: d.type as DocumentType, fileName: d.fileName, registrationNumber: own.get(d.id)?.registration_number, documentDate: own.get(d.id)?.document_date })),

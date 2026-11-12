@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
-  ASSIGNMENT_PRIORITY_LABELS, ASSIGNMENT_STATUS_LABELS, INTAKE_SOURCE_LABELS,
+  ASSIGNMENT_STATUS_LABELS,
   type AssignmentPriority, type AssignmentStatus, type IntakeSource, type PropertyClass,
 } from '@value-hub/valuation-shared'
 import type { ReactNode } from 'react'
@@ -56,22 +56,27 @@ export function dueLabel(due: string | Date, now = new Date()): { text: string; 
   return { text: `in ${days} day${days === 1 ? '' : 's'}`, tone: days <= 2 ? 'soon' : 'ok' }
 }
 
-export function StepHeader({ a, here, eyebrow, title, subtitle }: { a: AssignmentHead; here: number; eyebrow: string; title: string; subtitle: string }) {
-  const stepNow = STEP_OF_STATUS[a.status]
-  return <>
-    <div className="pd-topline"><Link to={`/assignments/${a.id}`} className="pd-back">← <span>{a.code}</span></Link><span className="pd-secure"><i /> Secure workspace</span></div>
-    <header className="pd-heading"><div><p className="pd-eyebrow">VALUATION WORKFLOW <span>/</span> {eyebrow}</p><h1>{title}</h1><p>{subtitle}</p></div></header>
-    <nav className="pd-flow" aria-label="Valuation workflow">{FLOW.map((label, index) => {
-      const state = index < stepNow ? 'done' : index === stepNow ? 'now' : 'next'
-      return <Link key={label} to={index === here ? '#' : stepPath(index, a.id)} className={`pd-flow-step is-${state} ${index === here ? 'is-here' : ''}`} aria-current={index === here ? 'step' : undefined}><span>{state === 'done' ? '✓' : index + 1}</span><b>{label}</b></Link>
-    })}</nav>
-    <section className="pd-summary">
-      <div><small>Assignment</small><b>{a.code}</b></div><div><small>Bank</small><b>{a.bank.name}</b></div><div><small>Borrower</small><b>{a.borrowerName ?? '—'}</b></div><div><small>Purpose</small><b>{a.purpose}</b></div>
-      <div><small>Due</small><b>{formatDate(a.dueDate)}</b></div><div><small>Valuer</small><b>{a.assignedValuer.fullName}</b></div>
-      <div><small>Priority</small><b className={`pd-prio is-${a.priority.toLowerCase()}`}>{ASSIGNMENT_PRIORITY_LABELS[a.priority]}</b></div><div><small>Stage</small><b className="pd-stage">{ASSIGNMENT_STATUS_LABELS[a.status]}</b></div>
-      <div><small>Came in via</small><b>{INTAKE_SOURCE_LABELS[a.intakeSource]}</b></div>
-    </section>
-  </>
+// The strip every case page opens with, as in the prototype: who and what the case is, where it stands, and who has it.
+export function StepHeader({ a, title, subtitle }: { a: AssignmentHead; here?: number; eyebrow?: string; title?: string; subtitle?: string }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-border bg-white p-3.5 text-xs shadow-xs">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Link to={`/assignments/${a.id}`} className="font-mono text-sm font-bold text-brand-navy hover:underline">{a.code}</Link>
+        <span className="text-slate-300">|</span>
+        <span className="font-semibold text-slate-800">{a.borrowerName ?? 'No borrower recorded'}</span>
+        <span className="text-slate-300">|</span>
+        <span className="text-slate-600">{a.bank.name}</span>
+        <span className="text-slate-300">|</span>
+        <span className="text-slate-600" title={a.property.addressLine}>{a.property.addressLine.length > 48 ? `${a.property.addressLine.slice(0, 48)}…` : a.property.addressLine}</span>
+      </div>
+      <div className="flex items-center space-x-3">
+        {title && <span className="hidden text-[11px] font-semibold text-brand-navy lg:inline" title={subtitle}>{title}</span>}
+        <span className="rounded border border-amber-200 bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{ASSIGNMENT_STATUS_LABELS[a.status]}</span>
+        <span className="text-[11px] text-slate-500">Valuer: <strong className="text-slate-700">{a.assignedValuer.fullName}</strong></span>
+        <span className="text-[11px] text-slate-500">Due: <strong className="text-slate-700">{formatDate(a.dueDate)}</strong></span>
+      </div>
+    </div>
+  )
 }
 
 function Ring({ done, total }: { done: number; total: number }) {
@@ -84,5 +89,14 @@ export function ReadyCard({ title, readiness, summary, children }: { title: stri
     <div className="pd-ready-head">{readiness ? <Ring done={readiness.done} total={readiness.total} /> : <span className="pd-ring-empty" />}<div><h3>{title}</h3><p>{readiness ? summary : 'Checking…'}</p></div></div>
     <ul className="pd-checks">{readiness?.items.map((item) => <li key={item.key} className={`is-${item.state}`}><span className="pd-check-dot">{item.state === 'done' ? '✓' : item.state === 'todo' ? '○' : '!'}</span><div><b>{item.label}</b><small>{item.detail}</small></div></li>)}</ul>
     {children}
+  </div>
+}
+
+// The navy banner each ValuerPro module opens with: who is working, on which case, and how far along.
+export function StageBanner({ icon, title, tag, line, aside, asideLabel }: { icon: string; title: string; tag?: string; line: string; aside?: string; asideLabel?: string }) {
+  return <div className="stage-banner">
+    <div className="stage-banner-main"><span className="stage-banner-icon">{icon}</span>
+      <div><div className="stage-banner-title"><h2>{title}</h2>{tag && <em>{tag}</em>}</div><p>{line}</p></div></div>
+    {aside && <div className="stage-banner-aside"><small>{asideLabel}</small><b>{aside}</b></div>}
   </div>
 }

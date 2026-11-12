@@ -1,126 +1,215 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ASSIGNMENT_PRIORITY_LABELS, ASSIGNMENT_STATUS_LABELS, type AssignmentPriority, type AssignmentStatus } from '@value-hub/valuation-shared'
-import { dueLabel, FLOW, nextActionFor } from '../components/WorkflowParts.tsx'
+import { Link, useNavigate } from 'react-router-dom'
+import { AlertTriangle, CalendarClock, ListTodo, PieChart, Plus, Users } from 'lucide-react'
+import { ASSIGNMENT_STATUS_LABELS, type AssignmentStatus } from '@value-hub/valuation-shared'
+import { nextActionFor } from '../components/WorkflowParts.tsx'
 import { formatInr } from '../components/ui.tsx'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
 
 interface Summary {
-  assignments?: { open: number; newThisWeek: number; dueToday: number; overdue: number; byStatus: Record<AssignmentStatus, number> }
+  assignments?: { open: number; dueToday: number; overdue: number }
   inspections: { upcomingWeek: number; inProgress: number; awaitingFieldReview: number }
-  reports?: { awaitingValuation: number; awaitingQc: number; awaitingSignature: number }
-  queries?: { open: number; dueWithinTwoDays: number }
-  receivables?: { invoiced: number; received: number; outstanding: number; ageing: Record<string, number> }
+  reports?: { awaitingQc: number }
+  receivables?: { outstanding: number }
 }
-interface Reminder { type: string; assignmentId: string; ref: string; dueAt: string; overdue: boolean; message: string }
-interface Workload { id: string; fullName: string; role: string; openAssignments: number; overdueAssignments: number; pendingInspections: number }
-interface Submitted { total: number; groups: { label: string; count: number }[] }
 interface QueueItem {
-  id: string; code: string; status: AssignmentStatus; dueDate: string; priority: AssignmentPriority; borrowerName: string | null
+  id: string; code: string; status: AssignmentStatus; dueDate: string; borrowerName: string | null
   bank: { name: string }; property: { addressLine: string }; assignedValuer: { fullName: string }; visitAt: string | null; visitStatus: string | null
 }
+interface Workload { id: string; fullName: string; role: string; openAssignments: number; overdueAssignments: number; pendingInspections: number }
+interface Overview {
+  pipeline: { buckets: { key: string; label: string; count: number }[]; total: number; yearTotal: number }
+  monthly: { months: string[]; registered: number[]; issued: number[]; invoiced: number[] }
+}
 
-// Which stage statuses make up each of the six workflow steps.
-const PIPELINE: { step: string; statuses: AssignmentStatus[] }[] = [
-  { step: FLOW[0], statuses: ['INTAKE'] },
-  { step: FLOW[1], statuses: ['DOCUMENTS'] },
-  { step: FLOW[2], statuses: ['INSPECTION'] },
-  { step: FLOW[3], statuses: ['VALUATION', 'REVISION'] },
-  { step: FLOW[4], statuses: ['QUALITY_REVIEW'] },
-  { step: FLOW[5], statuses: ['APPROVED', 'SUBMITTED'] },
-]
-const AGEING_LABEL: Record<string, string> = { current: 'Not yet due', d1to30: '1–30 days', d31to60: '31–60 days', d61to90: '61–90 days', d90plus: '90+ days' }
-const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' }
+const COLOURS: Record<string, string> = { new: '#3B82F6', docs: '#60A5FA', site: '#D97706', compare: '#EF4444', draft: '#8B5CF6', review: '#A855F7', approved: '#10B981', closed: '#1A365D' }
+const DAY = 86400000
+const dayOf = (iso: string) => new Date(new Date(iso).toDateString()).getTime()
+const today = () => new Date(new Date().toDateString()).getTime()
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+const monthLabel = (key: string) => new Date(`${key}-01T00:00:00Z`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 
-function Tile({ label, value, tone, to, hint }: { label: string; value: number | string; tone?: 'warn' | 'bad'; to?: string; hint?: string }) {
-  const hot = tone && Number(value) > 0
-  const body = <div className={`cc-tile ${hot ? `is-${tone}` : ''}`}><small>{label}</small><b>{value}</b>{hint && <span>{hint}</span>}</div>
-  return to ? <Link to={to} className="cc-tile-link">{body}</Link> : body
+function Pill({ dot, label, children, tone }: { dot: string; label: string; children: React.ReactNode; tone: string }) {
+  return (
+    <div className="flex items-center space-x-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
+      <span className="font-medium text-slate-500">{label}:</span>
+      <span className={`rounded border px-2 py-0.5 font-mono font-extrabold ${tone}`}>{children}</span>
+    </div>
+  )
+}
+
+function Card({ icon, title, right, children, className = '' }: { icon: React.ReactNode; title: string; right?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-xl border border-brand-border bg-white p-4 shadow-xs ${className}`}>
+      <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div className="flex items-center space-x-2 text-brand-navy">{icon}<h3 className="text-xs font-bold tracking-tight text-slate-800">{title}</h3></div>
+        {right}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Donut({ buckets, total }: { buckets: Overview['pipeline']['buckets']; total: number }) {
+  const R = 70, C = 2 * Math.PI * R
+  let offset = 0
+  return (
+    <div className="relative flex h-56 items-center justify-center">
+      <svg viewBox="0 0 200 200" className="h-full" role="img" aria-label="Cases by stage">
+        <circle cx="100" cy="100" r={R} fill="none" stroke="#F1F5F9" strokeWidth="26" />
+        {total > 0 && buckets.filter((b) => b.count > 0).map((b) => {
+          const len = (b.count / total) * C
+          const el = <circle key={b.key} cx="100" cy="100" r={R} fill="none" stroke={COLOURS[b.key]} strokeWidth="26" strokeDasharray={`${Math.max(len - 2, 0)} ${C}`} strokeDashoffset={-offset} transform="rotate(-90 100 100)"><title>{`${b.label}: ${b.count} cases`}</title></circle>
+          offset += len
+          return el
+        })}
+      </svg>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-black text-brand-navy">{total}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Cases</span>
+      </div>
+    </div>
+  )
+}
+
+function Bars({ monthly }: { monthly: Overview['monthly'] }) {
+  const series = [['Cases Registered', monthly.registered, '#1A365D'], ['Cases Issued', monthly.issued, '#38A169'], ['Invoiced', monthly.invoiced, '#D97706']] as const
+  const max = Math.max(5, ...monthly.registered, ...monthly.issued, ...monthly.invoiced)
+  const W = 520, H = 190, base = 160, step = (W - 20) / monthly.months.length
+  return (
+    <>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-52 w-full" role="img" aria-label="Cases registered, issued and invoiced by month">
+        {[0, 0.5, 1].map((f) => <g key={f}><line x1="20" x2={W} y1={base - f * 130} y2={base - f * 130} stroke="#F1F5F9" /><text x="0" y={base - f * 130 + 3} fontSize="9" fill="#94A3B8">{Math.round(max * f)}</text></g>)}
+        {monthly.months.map((m, i) => (
+          <g key={m} transform={`translate(${24 + i * step}, 0)`}>
+            {series.map(([name, data, colour], s) => { const h = (data[i] / max) * 130; return <rect key={name} x={s * (step / 4)} y={base - h} width={step / 4 - 2} height={Math.max(h, 0)} rx="3" fill={colour}><title>{`${name}: ${data[i]}`}</title></rect> })}
+            <text x={step * 0.35} y={H - 10} textAnchor="middle" fontSize="10" fill="#64748B">{monthLabel(m)}</text>
+          </g>
+        ))}
+      </svg>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-500">{series.map(([name, , colour]) => <span key={name} className="flex items-center space-x-1"><span className="h-2 w-2 rounded-sm" style={{ background: colour }} /><span>{name}</span></span>)}</div>
+    </>
+  )
 }
 
 export default function CommandCentre() {
   const { user } = useAuth()
-  const summary = useFetch<Summary>('/dashboard/summary')
-  const queue = useFetch<QueueItem[]>('/dashboard/work-queue')
-  const canSeeAll = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER' || user?.role === 'REVIEWER'
-  const workload = useFetch<Workload[]>(canSeeAll ? '/dashboard/workload' : null)
-  const [groupBy, setGroupBy] = useState('bank')
-  const submitted = useFetch<Submitted>(canSeeAll ? `/dashboard/submitted?groupBy=${groupBy}` : null)
-  const gaps = useFetch<{ id: string; code: string; missing: string[] }[]>(user?.role === 'FIRM_ADMIN' || user?.role === 'REVIEWER' ? '/dashboard/archive-gaps' : null)
-  const reminders = useFetch<Reminder[]>(user?.role === 'INSPECTOR' ? null : '/dashboard/reminders')
-  const s = summary.data
-  const first = user?.fullName.split(' ')[0] ?? ''
-  const isInspector = user?.role === 'INSPECTOR'
-  const maxStage = Math.max(1, ...PIPELINE.map((p) => (s?.assignments ? p.statuses.reduce((n, st) => n + s.assignments!.byStatus[st], 0) : 0)))
+  const navigate = useNavigate()
+  const staff = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER' || user?.role === 'REVIEWER'
+  const summary = useFetch<Summary>('/dashboard/summary').data
+  const queue = useFetch<QueueItem[]>('/dashboard/work-queue').data ?? []
+  const overview = useFetch<Overview>(staff ? '/dashboard/overview' : null).data
+  const team = useFetch<Workload[]>(staff ? '/dashboard/workload' : null).data ?? []
+  const t0 = today()
+  const overdue = queue.filter((q) => dayOf(q.dueDate) < t0 && q.status !== 'SUBMITTED')
+  const upcoming = queue.filter((q) => dayOf(q.dueDate) >= t0 && dayOf(q.dueDate) <= t0 + 7 * DAY).sort((a, b) => dayOf(a.dueDate) - dayOf(b.dueDate))
+  const buckets = overview?.pipeline.buckets ?? []
+  const count = (...keys: string[]) => buckets.filter((b) => keys.includes(b.key)).reduce((t, b) => t + b.count, 0)
+  const open = (q: QueueItem) => { const next = nextActionFor(q.status, q.id); navigate(next ? next.to : `/assignments/${q.id}`) }
 
-  return <div className="pd-shell">
-    <header className="pd-heading"><div><p className="pd-eyebrow">COMMAND CENTRE <span>/</span> {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()}</p><h1>{greeting()}, {first}</h1><p>{isInspector ? 'Your site visits, in the order they are due.' : 'Where every assignment stands, and what needs you next.'}</p></div>
-      {!isInspector && <Link to="/assignments/new" className="pd-btn is-primary">＋ New assignment</Link>}</header>
-    {summary.error && <p role="alert" className="pd-flag">{summary.error}</p>}
-
-    {s?.assignments && <div className="cc-tiles">
-      <Tile label="Open assignments" value={s.assignments.open} to="/assignments" />
-      <Tile label="Due today" value={s.assignments.dueToday} tone="warn" to="/assignments" />
-      <Tile label="Overdue" value={s.assignments.overdue} tone="bad" to="/assignments?overdue=true" />
-      <Tile label="New this week" value={s.assignments.newThisWeek} />
-      <Tile label="Open bank queries" value={s.queries?.open ?? 0} tone="warn" hint={s.queries?.dueWithinTwoDays ? `${s.queries.dueWithinTwoDays} due within 2 days` : undefined} to="/revisions" />
-      {s.receivables && <Tile label="Outstanding" value={`₹ ${formatInr(s.receivables.outstanding)}`} to="/accounts" />}
-    </div>}
-    {isInspector && s && <div className="cc-tiles">
-      <Tile label="Visits in next 7 days" value={s.inspections.upcomingWeek} />
-      <Tile label="In progress" value={s.inspections.inProgress} />
-      <Tile label="Submitted, awaiting review" value={s.inspections.awaitingFieldReview} />
-    </div>}
-
-    {s?.assignments && <section className="pd-card cc-pipeline" aria-labelledby="cc-pipe-h">
-      <div className="pd-card-head"><div><span className="pd-step-tag">▤</span><div><h2 id="cc-pipe-h">Pipeline</h2><p>Open assignments by workflow step. Select a step to see them.</p></div></div></div>
-      <div className="cc-pipe">{PIPELINE.map((p, i) => {
-        const count = p.statuses.reduce((n, st) => n + s.assignments!.byStatus[st], 0)
-        const first = p.statuses[0]
-        return <Link key={p.step} to={`/assignments?status=${first}`} className={`cc-stage ${count ? '' : 'is-empty'}`}><span className="cc-stage-n">{i + 1}</span><small>{p.step}</small><b>{count}</b><i><em style={{ width: `${(count / maxStage) * 100}%` }} /></i></Link>
-      })}</div>
-      <p className="cc-closed">Closed so far: <b>{s.assignments.byStatus.CLOSED}</b></p>
-    </section>}
-
-    <div className="pd-grid">
-      <div className="pd-main">
-        <section className="pd-card" aria-labelledby="cc-q-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">1</span><div><h2 id="cc-q-h">{isInspector ? 'Your visits' : 'Work queue'}</h2><p>{isInspector ? 'Open a visit to measure, photograph and record.' : user?.role === 'VALUER' ? 'Your assignments, earliest due first.' : 'Open work, earliest due first. Each row opens the step it is waiting on.'}</p></div></div>{!isInspector && <Link to="/assignments" className="pd-btn is-ghost">All assignments →</Link>}</div>
-          {!queue.data ? <p className="pd-muted">Loading…</p> : queue.data.length === 0 ? <div className="pd-empty"><b>Nothing waiting on you</b><p>{isInspector ? 'No site visits are scheduled for you.' : 'Every assignment is moving. New instructions appear here.'}</p></div> : <div className="cc-queue">{queue.data.map((q) => {
-            const due = dueLabel(q.dueDate)
-            const next = nextActionFor(q.status, q.id)
-            return <article key={q.id}>
-              <div className="cc-q-main"><div className="cc-q-top"><Link to={`/assignments/${q.id}`} className="cc-q-code">{q.code}</Link><span className="pd-pill is-type">{ASSIGNMENT_STATUS_LABELS[q.status]}</span>{q.priority !== 'NORMAL' && <span className={`pd-prio is-${q.priority.toLowerCase()} cc-prio`}>{ASSIGNMENT_PRIORITY_LABELS[q.priority]}</span>}</div>
-                <b title={q.property.addressLine}>{q.property.addressLine}</b>
-                <small>{q.bank.name}{q.borrowerName ? ` · ${q.borrowerName}` : ''}{!isInspector && user?.role !== 'VALUER' ? ` · ${q.assignedValuer.fullName}` : ''}</small></div>
-              <div className="cc-q-due"><span className={`cc-due is-${due.tone}`}>{q.visitAt ? `Visit ${new Date(q.visitAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : due.text}</span><small>{q.visitAt ? `due ${due.text}` : `due ${new Date(q.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}</small></div>
-              {next && <Link to={next.to} className="pd-btn is-primary">{isInspector ? 'Open visit' : next.label} →</Link>}
-            </article>
-          })}</div>}
-        </section>
-
-        {canSeeAll && workload.data && workload.data.length > 0 && <section className="pd-card" aria-labelledby="cc-w-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">2</span><div><h2 id="cc-w-h">Team workload</h2><p>Open work per person, for allocating the next assignment.</p></div></div></div>
-          <div className="in-table-wrap"><table className="in-table"><thead><tr><th>Person</th><th>Role</th><th className="is-num">Open</th><th className="is-num">Overdue</th><th className="is-num">Visits pending</th></tr></thead><tbody>
-            {workload.data.map((p) => <tr key={p.id}><td><b>{p.fullName}</b></td><td>{p.role.replace('_', ' ').toLowerCase()}</td><td className="is-num">{p.openAssignments}</td><td className={`is-num ${p.overdueAssignments ? 'cc-late' : ''}`}>{p.overdueAssignments}</td><td className="is-num">{p.pendingInspections}</td></tr>)}
-          </tbody></table></div>
-        </section>}
-
-        {s?.receivables && <section className="pd-card" aria-labelledby="cc-r-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">3</span><div><h2 id="cc-r-h">Receivables</h2><p>What has been invoiced, what has come in, and how late the rest is.</p></div></div><Link to="/accounts" className="pd-btn is-ghost">Open Accounts →</Link></div>
-          <div className="va-rates"><div><small>Invoiced</small><b>₹ {formatInr(s.receivables.invoiced)}</b></div><div><small>Received</small><b>₹ {formatInr(s.receivables.received)}</b></div><div><small>Outstanding</small><b>₹ {formatInr(s.receivables.outstanding)}</b></div></div>
-          <div className="cc-ageing">{Object.entries(s.receivables.ageing).map(([k, v]) => <div key={k} className={Number(v) > 0 && k !== 'current' ? 'is-late' : ''}><small>{AGEING_LABEL[k]}</small><b>₹ {formatInr(v)}</b></div>)}</div>
-        </section>}
+  return (
+    <div className="space-y-5">
+      {/* STATUS BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-border bg-white p-3 text-xs shadow-xs">
+        <Pill dot="bg-blue-600" label="Active Cases" tone="border-blue-100 bg-blue-50 text-slate-900">{summary?.assignments?.open ?? '—'}</Pill>
+        <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+        <Pill dot="bg-amber-500" label="Site Visits Due" tone="border-amber-100 bg-amber-50 text-slate-900">{summary?.inspections.upcomingWeek ?? '—'}</Pill>
+        <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+        <Pill dot="bg-red-600" label="Reports Overdue" tone="border-red-200 bg-red-50 text-red-700">{summary?.assignments?.overdue ?? '—'}</Pill>
+        <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+        <Pill dot="bg-purple-600" label="Drafts Awaiting Review" tone="border-purple-100 bg-purple-50 text-slate-900">{summary?.reports?.awaitingQc ?? '—'}</Pill>
+        <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+        <Pill dot="bg-emerald-600" label="Fees Outstanding" tone="border-emerald-200 bg-emerald-50 text-emerald-800">{summary?.receivables ? `₹${formatInr(summary.receivables.outstanding)}` : '—'}</Pill>
+        <div className="ml-auto"><Link to="/assignments/new" className="flex items-center space-x-1.5 rounded-lg bg-brand-navy px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-navyDark"><Plus className="h-3.5 w-3.5" /><span>New Case</span></Link></div>
       </div>
 
-      <aside className="pd-aside cc-aside">
-        {reminders.data && reminders.data.length > 0 && <div className="pd-ready"><h3>Needs attention</h3><ul className="cc-remind">{reminders.data.slice(0, 10).map((r) => <li key={`${r.type}-${r.ref}`} className={r.overdue ? 'is-late' : ''}><i /><Link to={`/assignments/${r.assignmentId}`}>{r.message}</Link></li>)}</ul></div>}
-        {s && <div className="pd-ready"><h3>Field work</h3><div className="cc-mini"><div><b>{s.inspections.upcomingWeek}</b><small>visits in 7 days</small></div><div><b>{s.inspections.inProgress}</b><small>in progress</small></div><div className={s.inspections.awaitingFieldReview ? 'is-warn' : ''}><b>{s.inspections.awaitingFieldReview}</b><small>awaiting field review</small></div></div></div>}
-        {s?.reports && <div className="pd-ready"><h3>Reports</h3><div className="cc-mini"><div><b>{s.reports.awaitingValuation}</b><small>awaiting calculations</small></div><div><b>{s.reports.awaitingQc}</b><small>in QC / approval</small></div><div><b>{s.reports.awaitingSignature}</b><small>ready to issue</small></div></div></div>}
-        {canSeeAll && <div className="pd-ready"><h3>Submitted this month</h3><select className="cc-select" aria-label="Group by" value={groupBy} onChange={(e) => setGroupBy(e.target.value)}><option value="bank">By bank</option><option value="branch">By branch</option><option value="valuer">By valuer</option><option value="propertyClass">By property class</option></select><p className="cc-total"><b>{submitted.data?.total ?? 0}</b> assignment{submitted.data?.total === 1 ? '' : 's'}</p>{submitted.data?.groups.map((g) => <p key={g.label} className="cc-group"><span>{g.label}</span><b>{g.count}</b></p>)}</div>}
-        {gaps.data && gaps.data.length > 0 && <div className="pd-ready"><h3>Closed, but incomplete</h3><ul className="cc-remind">{gaps.data.map((g) => <li key={g.id}><i /><span><Link to={`/assignments/${g.id}`}>{g.code}</Link>: {g.missing.join(', ')}</span></li>)}</ul></div>}
-      </aside>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-10">
+        {/* LEFT */}
+        <div className="space-y-4 lg:col-span-3">
+          <Card icon={<ListTodo className="h-4 w-4" />} title="Today's Work Queue" right={<span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{Math.min(queue.length, 6)} of {queue.length}</span>}>
+            <div className="space-y-2 text-xs">
+              {queue.length === 0 && <p className="text-slate-500">Nothing waiting on you.</p>}
+              {queue.slice(0, 6).map((q) => {
+                const late = dayOf(q.dueDate) < t0, now = dayOf(q.dueDate) === t0
+                const tone = late ? ['border-red-100 bg-red-50/60 hover:bg-red-50', 'bg-red-600', 'text-red-600 font-bold'] : now ? ['border-amber-100 bg-amber-50/60 hover:bg-amber-50', 'bg-amber-500', 'text-amber-700'] : ['border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50', 'bg-emerald-600', 'text-emerald-700']
+                return (
+                  <button key={q.id} type="button" onClick={() => open(q)} className={`group flex w-full items-center justify-between rounded-lg border p-2.5 text-left transition ${tone[0]}`}>
+                    <div className="flex min-w-0 items-center space-x-2"><span className={`h-2 w-2 shrink-0 rounded-full ${tone[1]}`} /><div className="truncate"><div className="font-mono text-[11px] font-bold text-slate-900 group-hover:text-brand-navy">{q.code}</div><div className="truncate text-[10px] text-slate-500">{nextActionFor(q.status, q.id)?.label ?? ASSIGNMENT_STATUS_LABELS[q.status]} · {q.property.addressLine}</div></div></div>
+                    <div className="shrink-0 text-right"><div className="text-[10px] font-semibold text-slate-700">{q.assignedValuer.fullName.split(' ')[0]}</div><div className={`font-mono text-[9px] ${tone[2]}`}>{q.visitAt ? new Date(q.visitAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : shortDate(q.dueDate)}</div></div>
+                  </button>
+                )
+              })}
+            </div>
+          </Card>
+
+          <div className="rounded-xl border border-red-200 bg-red-50/40 p-3.5 shadow-xs">
+            <div className="mb-2 flex items-center justify-between"><div className="flex items-center space-x-1.5 text-xs font-bold text-red-800"><AlertTriangle className="h-4 w-4 text-brand-red" /><span>Overdue Cases (Escalation)</span></div><span className="rounded bg-red-100 px-1.5 font-mono text-[10px] font-bold text-red-700">{overdue.length} Urgent</span></div>
+            <div className="space-y-1.5 text-xs">
+              {overdue.length === 0 && <p className="text-slate-500">Nothing is overdue.</p>}
+              {overdue.slice(0, 3).map((q) => (
+                <Link key={q.id} to={`/assignments/${q.id}`} className="flex items-center justify-between rounded border border-red-200 bg-white p-2"><div><span className="font-mono font-bold text-brand-navy">{q.code}</span><p className="text-[10px] text-slate-500">{q.property.addressLine} · {ASSIGNMENT_STATUS_LABELS[q.status]}</p></div><span className="rounded bg-red-100 px-2 py-0.5 font-mono text-[10px] font-bold text-red-700">+{Math.round((t0 - dayOf(q.dueDate)) / DAY)} Days</span></Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* CENTRE */}
+        <div className="space-y-4 lg:col-span-4">
+          <Card icon={<PieChart className="h-4 w-4" />} title="Case Pipeline Distribution" right={<span className="text-[10px] font-medium text-slate-500">{overview ? `${overview.pipeline.yearTotal} received this year` : ''}</span>}>
+            {overview ? <Donut buckets={buckets} total={overview.pipeline.total} /> : <p className="py-16 text-center text-xs text-slate-500">{staff ? 'Loading…' : 'Shown to staff.'}</p>}
+            <div className="mt-2 grid grid-cols-4 gap-1 border-t border-slate-100 pt-2 text-center text-[10px]">
+              {buckets.map((b) => <div key={b.key} className="rounded bg-slate-50 p-1"><span className="block text-slate-500">{b.label}</span><span className="font-mono font-bold" style={{ color: b.key === 'compare' ? '#B45309' : b.key === 'review' ? '#7E22CE' : b.key === 'approved' ? '#047857' : '#1e293b' }}>{b.count}</span></div>)}
+            </div>
+          </Card>
+          <div className="rounded-xl border border-brand-border bg-white p-3.5 shadow-xs">
+            <span className="mb-2 block text-xs font-bold text-slate-700">Stage-by-Stage Throughput</span>
+            <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+              {[['1. Intake', count('new', 'docs'), 'New / Documents', 'blue'], ['2. Field & Evidence', count('site', 'compare'), 'Visit / Comparison', 'amber'], ['3. Valuation', count('draft', 'review'), 'Draft / Review', 'purple'], ['4. Final Sign & Bill', count('approved', 'closed'), 'Approved / Closed', 'emerald']].map(([title, n, sub, c]) => (
+                <div key={String(title)} className={`rounded-lg border p-2 ${c === 'blue' ? 'border-blue-200 bg-blue-50 text-blue-900' : c === 'amber' ? 'border-amber-200 bg-amber-50 text-amber-900' : c === 'purple' ? 'border-purple-200 bg-purple-50 text-purple-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}><div className="font-bold">{title}</div><div className="mt-0.5 font-mono text-base font-extrabold">{n}</div><div className="text-[9px] opacity-80">{sub}</div></div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT */}
+        <div className="space-y-4 lg:col-span-3">
+          <Card icon={<CalendarClock className="h-4 w-4" />} title="Deadlines — Next 7 Days" right={<span className="text-[10px] text-slate-400">Chronological</span>}>
+            <div className="space-y-2 text-xs">
+              {upcoming.length === 0 && <p className="text-slate-500">No deadline in the next week.</p>}
+              {upcoming.slice(0, 5).map((q) => {
+                const isToday = dayOf(q.dueDate) === t0
+                return (
+                  <Link key={q.id} to={`/assignments/${q.id}`} className="flex items-start space-x-2.5 rounded border border-transparent p-2 transition hover:border-slate-200 hover:bg-slate-50">
+                    <div className={`w-12 shrink-0 rounded px-2 py-1 text-center ${isToday ? 'bg-brand-navy text-white' : 'border border-slate-200 bg-slate-100 text-slate-700'}`}><span className="block text-[8px] font-semibold uppercase tracking-wider">{isToday ? 'Today' : new Date(q.dueDate).toLocaleDateString('en-IN', { weekday: 'short' })}</span><span className="block font-mono text-xs font-bold">{shortDate(q.dueDate)}</span></div>
+                    <div className="min-w-0 flex-1"><div className="font-mono text-[11px] font-bold text-slate-900">{q.code}</div><div className="truncate text-[10px] text-slate-600">{nextActionFor(q.status, q.id)?.label ?? ASSIGNMENT_STATUS_LABELS[q.status]}</div><div className="text-[9px] font-medium text-brand-navy">Resp: {q.assignedValuer.fullName}</div></div>
+                  </Link>
+                )
+              })}
+            </div>
+          </Card>
+
+          {staff && (
+            <Card icon={<Users className="h-4 w-4" />} title="Team Pulse" right={<span className="text-[10px] text-slate-400">Open work</span>}>
+              <div className="space-y-2 text-xs">
+                {team.slice(0, 5).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-lg bg-slate-50 p-2">
+                    <div className="flex items-center space-x-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-navy text-[10px] font-bold text-brand-gold">{p.fullName.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span><div><div className="font-semibold text-slate-800">{p.fullName}</div><div className="text-[10px] capitalize text-slate-500">{p.role.replace('_', ' ').toLowerCase()}</div></div></div>
+                    <div className="text-right font-mono text-[10px]"><div className="font-bold text-slate-800">{p.openAssignments + p.pendingInspections} open</div>{p.overdueAssignments > 0 && <div className="font-bold text-red-600">{p.overdueAssignments} late</div>}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {overview && (
+        <div className="rounded-xl border border-brand-border bg-white p-4 shadow-xs">
+          <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-2.5"><h3 className="text-xs font-bold text-slate-800">Monthly Operational Performance (6 Months Trend)</h3></div>
+          <Bars monthly={overview.monthly} />
+        </div>
+      )}
     </div>
-  </div>
+  )
 }

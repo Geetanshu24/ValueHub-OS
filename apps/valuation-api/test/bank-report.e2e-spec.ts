@@ -75,4 +75,14 @@ describe.skipIf(!e2eEnabled)('bank report (Bank of India format)', () => {
       expect(JSON.stringify(draft.body)).toContain('ANTHROPIC_API_KEY');
     }
   });
+
+  it('compares the documents with the site, and has nothing to settle before there is evidence', async () => {
+    const cmp = await http('GET', `/assignments/${assignmentId}/comparison`, { token: admin.token });
+    expect(cmp.status).toBe(200);
+    expect(cmp.body.rows.length).toBeGreaterThan(8);
+    expect(cmp.body.rows.find((r: any) => r.key === 'plot_area_sqm').status).toBe('missing');
+    expect(cmp.body.canProceed).toBe(true);
+    const bad = await http('POST', `/assignments/${assignmentId}/comparison/plot_area_sqm/resolve`, { token: admin.token, json: { treatment: 'adopt_document', note: 'Taken from the deed.' } });
+    expect(bad.status).toBe(404);
+  });
 });

@@ -4,6 +4,7 @@ export * from './assignment-status.js';
 export * from './ids.js';
 export * from './pagination.js';
 export * from './documents.js';
+export * from './comparison.js';
 export * from './inspection.js';
 export * from './intake.js';
 export * from './document-checklist.js';

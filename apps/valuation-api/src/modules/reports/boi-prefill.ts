@@ -28,6 +28,8 @@ export interface PrefillInput {
   // Best known value for each documented fact (reviewed value if there is one).
   facts: Record<string, string>;
   documents: { type: DocumentType; fileName: string; registrationNumber?: string; documentDate?: string }[];
+  // The valuer's notes on differences found between the documents and the site, by what they are about.
+  disclosures?: Record<string, string>;
 }
 
 export const formatDate = (d: Date) => `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${d.getUTCFullYear()}`;
@@ -180,6 +182,23 @@ export function prefillBoi(input: PrefillInput): Record<string, string> {
   if (facts.electricity_consumer_no) set('lg_13a', `Consumer no. ${facts.electricity_consumer_no}`);
   if (facts.property_tax_id) set('lg_13b', `Property tax ID ${facts.property_tax_id}`);
   if (facts.water_connection_no) set('lg_13c', `Connection no. ${facts.water_connection_no}`);
+  // What the valuer decided about differences between documents and site goes into the report as written.
+  const note = input.disclosures ?? {};
+  if (note.built_up_area_sqm) {
+    set('violations', note.built_up_area_sqm);
+    set('tp_13', note.built_up_area_sqm);
+    set('b_map_comments', note.built_up_area_sqm);
+    set('alterations', note.built_up_area_sqm);
+  }
+  if (note.occupation_certificate) {
+    set('tp_16', note.occupation_certificate);
+    set('b_map_comments', [note.built_up_area_sqm, note.occupation_certificate].filter(Boolean).join(' '));
+  }
+  if (note.plot_area_sqm) {
+    set('area_remark', note.plot_area_sqm);
+    set('areas_clarified', note.plot_area_sqm);
+  }
+
   // Comparable listings and rates read from screenshots.
   for (const n of [1, 2, 3]) {
     const [dealer, contact, size, rate, place] = (facts[`market_listing_${n}`] ?? '').split('|').map((x) => x.trim());

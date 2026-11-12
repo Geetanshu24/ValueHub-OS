@@ -18,6 +18,12 @@ export class DashboardController {
     return this.dashboard.summary(user);
   }
 
+  @Roles('FIRM_ADMIN', 'VALUER', 'REVIEWER')
+  @Get('overview')
+  overview(@CurrentUser() user: AuthUser) {
+    return this.dashboard.overview(user.firmId);
+  }
+
   @Get('work-queue')
   workQueue(@CurrentUser() user: AuthUser) {
     return this.dashboard.workQueue(user);

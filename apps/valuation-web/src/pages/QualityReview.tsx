@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ASSIGNMENT_STATUS_LABELS } from '@value-hub/valuation-shared'
-import { ReadyCard, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
+import { ReadyCard, StageBanner, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
 import { ErrorText, errorMessage, formatInr } from '../components/ui.tsx'
 import { api, fileBlobUrl, openFile } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
@@ -124,6 +124,7 @@ export default function QualityReview() {
   const stale = !!rep && !rep.forLatestValuation
 
   return <div className="pd-shell">
+    <StageBanner icon="✍" title="Valuer Sign-Off" tag={rep ? 'Report built' : undefined} line={`Case Ref: ${a.code} · Checker ≠ maker: a second person signs off`} asideLabel="Review progress" aside={`${checklistDone} of ${(checklist.data ?? []).length} checks done`} />
     <StepHeader a={a} here={4} eyebrow="STEP 5 · QUALITY REVIEW" title="Quality Review" subtitle="A second person signs off the numbers, the report is built from them and checked, and nothing goes to the bank until both are approved." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
     <ErrorText message={error ?? context.error ?? reports.error} />

@@ -7,7 +7,7 @@ import {
 import DocumentDrawer, { type DocFact } from '../components/DocumentDrawer.tsx'
 import { ReadyCard, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
 import { ErrorText, errorMessage } from '../components/ui.tsx'
-import { api, openFile, type Paginated } from '../lib/api.ts'
+import { api, fileBlobUrl, openFile, type Paginated } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
 
@@ -23,7 +23,6 @@ interface DocRow {
 }
 interface Suggestion { id: string; label: string; value: string; from: string; patch: Record<string, unknown> }
 
-const TYPE_GLYPH: Record<DocumentType, string> = { BANK_INSTRUCTION: '✉', SALE_DEED: '§', APPROVED_PLAN: '▦', REVENUE_RECORD: '☷', TAX_RECEIPT: '₹', OCCUPATION_CERTIFICATE: '✓', SHAJRA_PLAN: '▦', WATER_BILL: '≋', MAGISTRATE_CERTIFICATE: '§', PATWARI_REPORT: '☷', OTHER: '▤' }
 const sizeLabel = (bytes: number) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
 export default function PropertyDocuments() {
@@ -44,7 +43,6 @@ export default function PropertyDocuments() {
   const [autoRead, setAutoRead] = useState(true)
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [openDoc, setOpenDoc] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'mine' | 'review'>('all')
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Record<string, string> | null>(null)
   const [saving, setSaving] = useState(false)
@@ -52,6 +50,9 @@ export default function PropertyDocuments() {
   const [moving, setMoving] = useState(false)
   const [otherType, setOtherType] = useState<DocumentType>('OTHER')
   const advanced = useRef(false)
+  const [sel, setSel] = useState<string | null>(null)
+  const [tab, setTab] = useState<'all' | 'verified' | 'pending'>('all')
+  const [view, setView] = useState<{ url: string; type: string } | null>(null)
 
   const reloadAll = () => { assignment.reload(); property.reload(); docs.reload(); readiness.reload() }
   const documents = docs.data?.items
@@ -72,6 +73,15 @@ export default function PropertyDocuments() {
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey])
+
+  const selected = documents?.find((d) => d.id === sel) ?? documents?.[0] ?? null
+  const selectedId = selected?.id
+  useEffect(() => {
+    if (!selectedId) { setView(null); return }
+    let url: string | null = null; let cancelled = false
+    fileBlobUrl(`/documents/${selectedId}/file`).then((v) => { url = v.url; if (cancelled) URL.revokeObjectURL(v.url); else setView(v) }).catch(() => { if (!cancelled) setView(null) })
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url) }
+  }, [selectedId])
 
   const docName = (docId: string) => { const d = documents?.find((row) => row.id === docId); return d ? DOCUMENT_TYPE_LABELS[d.type] : 'a document' }
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -166,7 +176,10 @@ export default function PropertyDocuments() {
 
   const p = property.data
   const checklist = a ? documentChecklist(a.property.propertyClass) : []
-  const list = (documents ?? []).filter((d) => filter === 'all' || (filter === 'mine' ? d.assignmentId === id : d.facts.unverified > 0))
+  const haveCount = checklist.filter((e) => (documents ?? []).some((d) => d.type === e.type)).length
+  const verifiedCount = checklist.filter((e) => { const h = (documents ?? []).filter((d) => d.type === e.type); return h.length > 0 && h.every((d) => d.facts.total > 0 && d.facts.unverified === 0) }).length
+  const extras = (documents ?? []).filter((d) => !checklist.some((e) => e.type === d.type))
+  const selectedFacts = selected ? facts.filter((f) => f.documentId === selected.id) : []
   const stepNow = a ? STEP_OF_STATUS[a.status] : 1
   const r = readiness.data
   const todo = r?.items.filter((i) => i.state === 'todo' && !i.blocking) ?? []
@@ -182,6 +195,56 @@ export default function PropertyDocuments() {
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
     <ErrorText message={error ?? property.error ?? docs.error ?? readiness.error} />
 
+        <section className="vault-bar">
+          <div className="vault-bar-title"><b>Documents &amp; extraction</b><span>{(documents ?? []).length} file{(documents ?? []).length === 1 ? '' : 's'} on this property</span></div>
+          <div className="vault-bar-actions">
+            {canEdit && <label className="pd-switch"><input type="checkbox" checked={autoRead} onChange={(e) => setAutoRead(e.target.checked)} /><span /> Read text on upload</label>}
+            {canEdit && <label className="pd-btn is-primary pd-upload"><input type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" onChange={(e) => { void upload(Array.from(e.target.files ?? []), otherType); e.target.value = '' }} />⬆ Upload Documents</label>}
+          </div>
+        </section>
+        {uploading && <p className="pd-uploading"><i /> Uploading {uploading}…</p>}
+        <div className="vault-grid">
+          <div className="vault-pane vault-list">
+            <div className="vault-pane-head"><div><h3>Required Documents</h3><span>{haveCount} of {checklist.length} received</span></div><em>{checklist.length ? Math.round((haveCount / checklist.length) * 100) : 0}% Ready</em></div>
+            <div className="vault-tabs">{([['all', `All (${checklist.length})`], ['verified', `Verified (${verifiedCount})`], ['pending', `Pending (${checklist.length - verifiedCount})`]] as const).map(([key, label]) => <button key={key} type="button" className={tab === key ? 'is-on' : ''} onClick={() => setTab(key)}>{label}</button>)}</div>
+            <div className="vault-items">{checklist.map((entry) => {
+              const have = (documents ?? []).filter((d) => d.type === entry.type)
+              const verified = have.length > 0 && have.every((d) => d.facts.total > 0 && d.facts.unverified === 0)
+              if (tab === 'verified' && !verified) return null
+              if (tab === 'pending' && verified) return null
+              const doc = have[0]
+              const icon = !have.length ? (entry.level === 'required' ? '❌' : '⏳') : verified ? '✅' : '⏳'
+              return <div key={entry.type} className={`vault-item ${doc && doc.id === selected?.id ? 'is-active' : ''} ${dragOver === entry.type ? 'is-over' : ''}`} onClick={() => doc && setSel(doc.id)} onDragOver={(e) => { if (canEdit) { e.preventDefault(); setDragOver(entry.type) } }} onDragLeave={() => setDragOver(null)} onDrop={(e) => drop(e, entry.type)}>
+                <span className="vault-icon">{icon}</span>
+                <div className="vault-item-body"><b>{DOCUMENT_TYPE_LABELS[entry.type]}</b><small className={have.length ? '' : entry.level === 'required' ? 'is-red' : 'is-amber'}>{have.length ? `${have.length} file${have.length === 1 ? '' : 's'} · ${verified ? 'Verified' : doc.facts.unverified ? `${doc.facts.unverified} to review` : 'No facts read yet'}` : entry.level === 'required' ? 'Required · not uploaded' : 'Recommended · not uploaded'}</small></div>
+                {canEdit && <label className="vault-add" onClick={(e) => e.stopPropagation()} title={have.length ? 'Add another file' : 'Upload'}><input type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" onChange={(e) => { void upload(Array.from(e.target.files ?? []), entry.type); e.target.value = '' }} />＋</label>}
+              </div>
+            })}
+              {tab === 'all' && extras.length > 0 && <><span className="vault-cat">Other documents</span>{extras.map((d) => <div key={d.id} className={`vault-item ${d.id === selected?.id ? 'is-active' : ''}`} onClick={() => setSel(d.id)}><span className="vault-icon">{d.facts.unverified ? '⏳' : '✅'}</span><div className="vault-item-body"><b>{DOCUMENT_TYPE_LABELS[d.type]}</b><small title={d.fileName}>{d.fileName}</small></div></div>)}</>}
+              {canEdit && tab === 'all' && <div className={`vault-item is-other ${dragOver === 'OTHER' ? 'is-over' : ''}`} onDragOver={(e) => { e.preventDefault(); setDragOver('OTHER') }} onDragLeave={() => setDragOver(null)} onDrop={(e) => drop(e, otherType)}>
+                <span className="vault-icon">＋</span><div className="vault-item-body"><b>Any other document</b><select value={otherType} onChange={(e) => setOtherType(e.target.value as DocumentType)} aria-label="Type for other documents">{DOCUMENT_TYPES.map((v) => <option key={v} value={v}>{DOCUMENT_TYPE_LABELS[v]}</option>)}</select></div>
+              </div>}
+            </div>
+          </div>
+
+          <div className="vault-pane vault-viewer">
+            {!selected ? <div className="pd-empty"><b>No documents yet</b><p>Upload the bank instruction and title papers to begin.</p></div> : <>
+              <div className="vault-pane-head"><div><h3 title={selected.fileName}>{selected.fileName}</h3><span>{DOCUMENT_TYPE_LABELS[selected.type]} · {sizeLabel(selected.sizeBytes)} · {new Date(selected.uploadedAt).toLocaleDateString('en-IN')} · {INTAKE_SOURCE_LABELS[selected.source]}</span></div>
+                <div className="vault-viewer-actions"><span className={`pd-pill ${selected.assignmentId === id ? 'is-mine' : 'is-earlier'}`}>{selected.assignmentId === id ? 'This assignment' : 'Earlier work'}</span><button type="button" className="pd-btn is-ghost" aria-label={`Open ${selected.fileName}`} onClick={() => void openFile(`/documents/${selected.id}/file`).catch((c: unknown) => setError(errorMessage(c)))}>↗ Open</button></div></div>
+              <div className="vault-frame">{!view ? <p className="pd-muted">Loading file…</p> : view.type.startsWith('image/') ? <img src={view.url} alt={selected.fileName} /> : <iframe src={view.url} title={selected.fileName} />}<span className="vault-watermark">VERIFIED COPY · FOR VALUATION ONLY</span></div>
+              {canEdit && <div className="vault-retype"><label>Document type<select className="pd-type-select" value={selected.type} onChange={(e) => void reclassify(selected, e.target.value as DocumentType)} aria-label={`Type of ${selected.fileName}`}>{DOCUMENT_TYPES.map((v) => <option key={v} value={v}>{DOCUMENT_TYPE_LABELS[v]}</option>)}</select></label></div>}
+            </>}
+          </div>
+
+          <div className="vault-pane vault-facts">
+            <div className="vault-pane-head"><div><h3>Extracted Fields</h3><span>{selected ? `${selectedFacts.length} read from this document` : 'Select a document'}</span></div>{selected && <span className={`pd-pill ${selected.facts.unverified ? 'is-warn' : selected.facts.total ? 'is-verified' : 'is-none'}`}>{selected.facts.unverified ? `${selected.facts.unverified} to review` : selected.facts.total ? 'Verified' : selected.ocrStatus === 'NO_TEXT' ? 'No text found' : selected.ocrStatus === 'FAILED' ? 'Read failed' : 'No facts yet'}</span>}</div>
+            <div className="vault-fields">{selectedFacts.length === 0 ? <p className="pd-muted">{selected ? 'No facts have been read from this document yet.' : ''}</p> : selectedFacts.map((f) => <div key={f.id} className="vault-field">
+              <div><small>{factLabel(f.fieldKey)}</small><b>{(f.verifiedValue ?? f.extractedValue) || '—'}</b></div>
+              <span className={`badge-${f.state === 'UNVERIFIED' ? 'verify' : f.state === 'UNKNOWN' ? 'missing' : 'matched'}`}>{f.state === 'UNVERIFIED' ? 'To review' : f.state === 'CORRECTED' ? 'Corrected' : f.state === 'UNKNOWN' ? 'Unknown' : 'Verified'}</span>
+            </div>)}</div>
+            {selected && <button type="button" className="pd-btn is-primary is-block" onClick={() => setOpenDoc(selected.id)}>{canReview ? 'Review & verify fields' : 'View fields'}</button>}
+          </div>
+        </div>
     <div className="pd-grid">
       <div className="pd-main">
         <section className="pd-card" aria-labelledby="pd-prop-h">
@@ -210,38 +273,6 @@ export default function PropertyDocuments() {
           </dl>}
         </section>
 
-        <section className="pd-card" aria-labelledby="pd-docs-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="pd-docs-h">Document checklist</h2><p>Drop a file on a card or use Upload. Files stay with the property for future work.</p></div></div>{canEdit && <label className="pd-switch"><input type="checkbox" checked={autoRead} onChange={(e) => setAutoRead(e.target.checked)} /><span /> Read text on upload</label>}</div>
-          {uploading && <p className="pd-uploading"><i /> Uploading {uploading}…</p>}
-          <div className="pd-checklist">{checklist.map((entry) => {
-            const have = (documents ?? []).filter((d) => d.type === entry.type)
-            const pending = have.reduce((n, d) => n + d.facts.unverified, 0)
-            const read = have.reduce((n, d) => n + d.facts.total, 0)
-            return <div key={entry.type} className={`pd-slot ${have.length ? 'is-have' : entry.level === 'required' ? 'is-need' : ''} ${dragOver === entry.type ? 'is-over' : ''}`} onDragOver={(e) => { if (canEdit) { e.preventDefault(); setDragOver(entry.type) } }} onDragLeave={() => setDragOver(null)} onDrop={(e) => drop(e, entry.type)}>
-              <span className="pd-slot-glyph">{have.length ? '✓' : TYPE_GLYPH[entry.type]}</span>
-              <div className="pd-slot-body"><b>{DOCUMENT_TYPE_LABELS[entry.type]}</b><span className={`pd-pill is-${entry.level}`}>{entry.level === 'required' ? 'Required' : 'Recommended'}</span><small>{entry.hint}</small>
-                <small className="pd-slot-state">{have.length ? `${have.length} file${have.length === 1 ? '' : 's'}${pending ? ` · ${pending} to review` : read ? ' · reviewed' : ' · no facts read yet'}` : 'Not uploaded'}</small></div>
-              {canEdit && <label className="pd-btn is-ghost pd-upload"><input type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" onChange={(e) => { void upload(Array.from(e.target.files ?? []), entry.type); e.target.value = '' }} />{have.length ? 'Add more' : 'Upload'}</label>}
-            </div>
-          })}
-            {canEdit && <div className={`pd-slot is-other ${dragOver === 'OTHER' ? 'is-over' : ''}`} onDragOver={(e) => { e.preventDefault(); setDragOver('OTHER') }} onDragLeave={() => setDragOver(null)} onDrop={(e) => drop(e, otherType)}>
-              <span className="pd-slot-glyph">＋</span><div className="pd-slot-body"><b>Any other document</b><small>Photos, letters, NOCs, anything that supports the valuation</small><select value={otherType} onChange={(e) => setOtherType(e.target.value as DocumentType)} aria-label="Type for other documents">{DOCUMENT_TYPES.map((v) => <option key={v} value={v}>{DOCUMENT_TYPE_LABELS[v]}</option>)}</select></div>
-              <label className="pd-btn is-ghost pd-upload"><input type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" onChange={(e) => { void upload(Array.from(e.target.files ?? []), otherType); e.target.value = '' }} />Upload</label></div>}
-          </div>
-        </section>
-
-        <section className="pd-card" aria-labelledby="pd-lib-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">C</span><div><h2 id="pd-lib-h">Verify documents</h2><p>Open a file to see it beside the facts read from it, then verify, correct or mark each one unknown.</p></div></div>
-            <div className="pd-segment" role="group" aria-label="Filter documents">{([['all', 'All'], ['mine', 'This assignment'], ['review', 'To review']] as const).map(([key, label]) => <button key={key} type="button" className={filter === key ? 'is-on' : ''} onClick={() => setFilter(key)}>{label}</button>)}</div></div>
-          {list.length === 0 ? <div className="pd-empty"><b>{documents?.length ? 'Nothing matches this filter' : 'No documents yet'}</b><p>{documents?.length ? 'Try another filter.' : 'Upload the bank instruction and title papers above to begin.'}</p></div> : <div className="pd-doclist">{list.map((d) => <article key={d.id} className="pd-doc">
-            <span className="pd-doc-glyph">{TYPE_GLYPH[d.type]}</span>
-            <div className="pd-doc-main"><b title={d.fileName}>{d.fileName}</b><small>{sizeLabel(d.sizeBytes)} · {new Date(d.uploadedAt).toLocaleDateString('en-IN')} · {INTAKE_SOURCE_LABELS[d.source]}</small></div>
-            <span className={`pd-pill ${d.assignmentId === id ? 'is-mine' : 'is-earlier'}`}>{d.assignmentId === id ? 'This assignment' : 'Earlier work'}</span>
-            {canEdit ? <select className="pd-type-select" value={d.type} onChange={(e) => void reclassify(d, e.target.value as DocumentType)} aria-label={`Type of ${d.fileName}`}>{DOCUMENT_TYPES.map((v) => <option key={v} value={v}>{DOCUMENT_TYPE_LABELS[v]}</option>)}</select> : <span className="pd-pill is-type">{DOCUMENT_TYPE_LABELS[d.type]}</span>}
-            <span className={`pd-pill ${d.facts.unverified ? 'is-warn' : d.facts.total ? 'is-verified' : 'is-none'}`}>{d.facts.unverified ? `${d.facts.unverified} to review` : d.facts.total ? 'Verified' : d.ocrStatus === 'NO_TEXT' ? 'No text found' : d.ocrStatus === 'FAILED' ? 'Read failed' : 'No facts yet'}</span>
-            <div className="pd-doc-actions"><button type="button" className="pd-btn is-primary" onClick={() => setOpenDoc(d.id)}>Review</button><button type="button" className="pd-btn is-ghost" aria-label={`Open ${d.fileName}`} onClick={() => void openFile(`/documents/${d.id}/file`).catch((c: unknown) => setError(errorMessage(c)))}>↗</button></div>
-          </article>)}</div>}
-        </section>
       </div>
 
       <aside className="pd-aside"><ReadyCard title="Ready for inspection?" readiness={r} summary={r?.complete ? 'Everything is in order.' : r?.canProceed ? 'You can proceed, but some items are open.' : 'Documents are needed before the site visit.'}>

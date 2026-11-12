@@ -16,9 +16,11 @@ import {
   ASSIGNMENT_PRIORITIES,
   ASSIGNMENT_STATUSES,
   INTAKE_SOURCES,
+  PROPERTY_CLASSES,
   type AssignmentPriority,
   type AssignmentStatus,
   type IntakeSource,
+  type PropertyClass,
 } from '@value-hub/valuation-shared';
 import { PaginationQuery } from '../../common/pagination/pagination.dto.js';
 
@@ -65,8 +67,9 @@ export class ListAssignmentsQuery extends PaginationQuery {
   @IsOptional() @IsUUID() bankId?: string;
   @IsOptional() @IsUUID() propertyId?: string;
   @IsOptional() @IsUUID() assignedValuerId?: string;
+  @IsOptional() @IsIn(PROPERTY_CLASSES) propertyClass?: PropertyClass;
 
-  // Matches the assignment code.
+  // Matches the assignment code, borrower, property address, khasra number or bank.
   @IsOptional() @IsString() @MaxLength(60) q?: string;
 
   // Due before today and still open (not submitted, closed or cancelled).

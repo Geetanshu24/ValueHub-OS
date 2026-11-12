@@ -279,4 +279,44 @@ export class DashboardService {
       }))
       .filter((a) => a.missing.length > 0);
   }
+
+  // How the firm's cases are spread over the stages, and what was registered, issued and invoiced each month.
+  async overview(firmId: string) {
+    const yearStart = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1));
+    const [grouped, comparing, yearTotal] = await Promise.all([
+      this.prisma.assignment.groupBy({ by: ['status'], where: { firmId, status: { not: 'CANCELLED' } }, _count: { _all: true } }),
+      // Cases whose site visit is in but whose documents and site still disagree.
+      this.prisma.assignment.count({ where: { firmId, status: { in: ['INSPECTION', 'VALUATION'] }, discrepancies: { some: { material: true, status: { in: ['UNRESOLVED', 'ESCALATED'] } } } } }),
+      this.prisma.assignment.count({ where: { firmId, receivedAt: { gte: yearStart } } }),
+    ]);
+    const count = (...statuses: string[]) => grouped.filter((g) => statuses.includes(g.status)).reduce((t, g) => t + g._count._all, 0);
+    const buckets = [
+      { key: 'new', label: 'New', count: count('INTAKE') },
+      { key: 'docs', label: 'Documents', count: count('DOCUMENTS') },
+      { key: 'site', label: 'Site Visit', count: Math.max(0, count('INSPECTION') - 0) },
+      { key: 'compare', label: 'Comparison', count: comparing },
+      { key: 'draft', label: 'Drafting', count: Math.max(0, count('VALUATION', 'REVISION') - 0) },
+      { key: 'review', label: 'Review', count: count('QUALITY_REVIEW') },
+      { key: 'approved', label: 'Approved', count: count('APPROVED') },
+      { key: 'closed', label: 'Closed', count: count('SUBMITTED', 'CLOSED') },
+    ];
+    const months = monthKeys(6);
+    const from = new Date(`${months[0]}-01T00:00:00Z`);
+    const [received, issued, invoiced] = await Promise.all([
+      this.prisma.assignment.findMany({ where: { firmId, receivedAt: { gte: from } }, select: { receivedAt: true }, take: 5000 }),
+      this.prisma.reportVersion.findMany({ where: { firmId, issuedAt: { gte: from } }, select: { issuedAt: true }, take: 5000 }),
+      this.prisma.invoice.findMany({ where: { firmId, issuedOn: { gte: from }, status: { not: 'CANCELLED' } }, select: { issuedOn: true }, take: 5000 }),
+    ]);
+    return {
+      pipeline: { buckets, total: buckets.reduce((t, b) => t + b.count, 0), yearTotal },
+      monthly: { months, registered: tally(months, received.map((r) => r.receivedAt)), issued: tally(months, issued.flatMap((r) => (r.issuedAt ? [r.issuedAt] : []))), invoiced: tally(months, invoiced.map((r) => r.issuedOn)) },
+    };
+  }
 }
+
+// The last `n` months as "2026-06", oldest first.
+export function monthKeys(n: number, now = new Date()): string[] {
+  return Array.from({ length: n }, (_v, i) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (n - 1 - i), 1)).toISOString().slice(0, 7));
+}
+
+export const tally = (months: string[], dates: Date[]): number[] => months.map((m) => dates.filter((d) => d.toISOString().slice(0, 7) === m).length);
