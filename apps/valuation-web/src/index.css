@@ -587,3 +587,25 @@ a.sn-step:hover { background:#fff; }.sn-step.is-here { background:#fff; box-shad
 .sb-channels{display:flex;gap:4px;border-bottom:1px solid #e2e8f0;padding-bottom:0;flex-wrap:wrap}
 .sb-channels button{display:flex;flex-direction:column;align-items:flex-start;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 14px;cursor:pointer;color:#64748b}
 .sb-channels button.is-on{color:var(--color-brand-navy);border-bottom-color:var(--color-brand-navy)}.sb-channels button b{font-size:12px}.sb-channels button small{font-size:10px}
+
+/* Case register: readable column widths instead of one-word-per-line */
+.reg-table td:first-child{white-space:nowrap;min-width:150px}
+.reg-table td:nth-child(3){min-width:130px}
+.reg-table td:nth-child(4){min-width:120px}
+.reg-table td:nth-child(5){min-width:200px}
+
+.in-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:10px 0 14px}
+@media (max-width:900px){.in-slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.in-slot{border:1px solid #e2e8f0;border-radius:10px;padding:8px;background:#fff;display:flex;flex-direction:column;gap:4px}
+.in-slot.is-done{border-color:#86efac;background:#f0fdf4}
+.in-slot .in-thumb,.in-slot-add{height:92px;border-radius:8px;overflow:hidden;width:100%}
+.in-slot-add{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0f172a;color:#cbd5e1;font-size:11px;cursor:pointer;gap:2px}.in-slot-add span{font-size:20px;color:#94a3b8}
+.in-slot b{font-size:11px;color:#1e293b}.in-slot small{font-size:10px;color:#64748b}.in-slot.is-done small{color:#059669;font-weight:600}
+
+/* Draft valuation: data health and report format on the left, workings on the right, as in the prototype */
+@media (min-width:1100px){.va-swap{grid-template-columns:minmax(260px,320px) minmax(0,1fr)!important}.va-swap>.pd-aside{order:-1}}
+
+/* Sign-off: evidence panel beside the certified figures, as in the prototype */
+.qr-duo{display:grid;gap:16px;align-items:start}
+@media (min-width:1200px){.qr-duo{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}}
+.qr-duo .qr-figs{grid-template-columns:1fr}

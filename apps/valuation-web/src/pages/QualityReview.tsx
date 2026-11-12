@@ -159,7 +159,14 @@ export default function QualityReview() {
 
     <div className="pd-grid">
       <div className="pd-main">
-        <EvidenceLayers assignmentId={id} />
+        <div className="qr-duo">
+          <EvidenceLayers assignmentId={id} />
+        {v && <section className="pd-card" aria-labelledby="qr-fig-h">
+          <div className="pd-card-head"><div><span className="pd-step-tag">₹</span><div><h2 id="qr-fig-h">Final certified appraised figures</h2><p>As they will be certified in the report. Realizable and distress values follow the standard 90% and 80% of fair market value.</p></div></div></div>
+          <div className="qr-figs"><div><small>Fair market value (₹)</small><b>{formatInr(v.totalValue)}</b></div><div><small>Realizable value (₹) · 90%</small><b>{formatInr(Number(v.totalValue) * 0.9)}</b></div><div><small>Distress / forced sale (₹) · 80%</small><b>{formatInr(Number(v.totalValue) * 0.8)}</b></div></div>
+          <p className="qr-meta">To change a figure, revise the valuation in Valuation Workings; a certified value is never edited here.</p>
+        </section>}
+        </div>
         <section className="pd-card" aria-labelledby="qr-val-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="qr-val-h">Valuation sign-off</h2><p>The assessed value must be approved by someone other than whoever prepared it.</p></div></div></div>
           {!v ? <div className="pd-empty"><b>No valuation yet</b><p>Complete the valuation workings first.</p><Link to={stepPath(3, id)} className="pd-btn is-primary">Go to Valuation Workings</Link></div> : <>
@@ -204,11 +211,6 @@ export default function QualityReview() {
           </div>
         </section>}
 
-        {v && <section className="pd-card" aria-labelledby="qr-fig-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">₹</span><div><h2 id="qr-fig-h">Final certified appraised figures</h2><p>As they will be certified in the report. Realizable and distress values follow the standard 90% and 80% of fair market value.</p></div></div></div>
-          <div className="qr-figs"><div><small>Fair market value (₹)</small><b>{formatInr(v.totalValue)}</b></div><div><small>Realizable value (₹) · 90%</small><b>{formatInr(Number(v.totalValue) * 0.9)}</b></div><div><small>Distress / forced sale (₹) · 80%</small><b>{formatInr(Number(v.totalValue) * 0.8)}</b></div></div>
-          <p className="qr-meta">To change a figure, revise the valuation in Valuation Workings; a certified value is never edited here.</p>
-        </section>}
 
         {report && <section className="pd-card qr-seal" aria-labelledby="qr-seal-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">✍</span><div><h2 id="qr-seal-h">Valuer signature &amp; seal</h2><p>Sign-off record for this report.</p></div></div><span className={`pd-pill ${report.approvedAt ? 'is-verified' : 'is-warn'}`}>{report.approvedAt ? 'Signed off' : 'Awaiting sign-off'}</span></div>

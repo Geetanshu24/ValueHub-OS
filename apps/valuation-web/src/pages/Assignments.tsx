@@ -92,7 +92,7 @@ export default function Assignments() {
 
       <div className="overflow-hidden rounded-xl border border-brand-border bg-white shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full divide-y divide-slate-200 text-left text-xs">
+          <table className="reg-table w-full min-w-[1180px] divide-y divide-slate-200 text-left text-xs">
             <thead className="select-none bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
               <tr><th className="px-3 py-3">Case ID</th><th className="px-2 py-3">Status</th><th className="px-3 py-3">Bank / Branch</th><th className="px-3 py-3">Owner</th><th className="px-3 py-3">Property Address</th><th className="px-2 py-3">Type</th><th className="px-2 py-3">Valuer / Insp</th><th className="px-2 py-3">Received</th><th className="px-2 py-3">Due Date</th><th className="px-3 py-3 text-right">Final Value (₹)</th><th className="px-2 py-3 text-center">Fee / Paid</th><th className="px-2 py-3 text-center">Actions</th></tr>
             </thead>

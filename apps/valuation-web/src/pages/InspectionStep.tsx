@@ -164,14 +164,14 @@ export default function InspectionStep() {
     })
   }
 
-  async function uploadPhotos(files: File[]) {
+  async function uploadPhotos(files: File[], forCategory?: string) {
     if (!visit || !editable) return
     setError(null); setNotice(null)
     const problems: string[] = []; let stored = 0
     for (const file of files) {
       setUploading(file.name)
       try {
-        const form = new FormData(); form.set('file', file); form.set('category', category)
+        const form = new FormData(); form.set('file', file); form.set('category', forCategory ?? category)
         if (file.lastModified) form.set('takenAt', new Date(file.lastModified).toISOString())
         await api.upload(`/inspections/${visit.id}/photos`, form); stored += 1
       } catch (caught) { problems.push(`${file.name}: ${errorMessage(caught)}`) }
@@ -264,6 +264,13 @@ export default function InspectionStep() {
           <section className="pd-card" aria-labelledby="in-photo-h">
             <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="in-photo-h">Photographic evidence</h2><p>{visit.photos.length} photo{visit.photos.length === 1 ? '' : 's'}. Confirm each caption: it becomes part of the evidence.</p></div></div></div>
             {editable && <>
+              <div className="in-slots" aria-label="Mandatory photo perspectives">{PHOTO_CATEGORIES.map((c, n) => {
+                const shot = visit.photos.find((p) => p.category === c)
+                return <div key={c} className={`in-slot ${shot ? 'is-done' : ''}`}>
+                  {shot ? <PhotoThumb id={shot.id} alt={shot.caption ?? c} onOpen={() => setLightbox(shot)} /> : <label className="in-slot-add"><input type="file" hidden accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(e) => { void uploadPhotos(Array.from(e.target.files ?? []), c); e.target.value = '' }} /><span>＋</span>Add photo</label>}
+                  <b>{n + 1}. {c}</b><small>{shot ? (shot.captionConfirmed ? 'Geotagged ✓ confirmed' : 'Caption to confirm') : 'Not captured'}</small>
+                </div>
+              })}</div>
               <div className="in-chips" role="group" aria-label="Photo category">{PHOTO_CATEGORIES.map((c) => <button key={c} type="button" className={category === c ? 'is-on' : ''} onClick={() => setCategory(c)}>{c}</button>)}</div>
               <label className={`in-drop ${over ? 'is-over' : ''}`} onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={drop}><input type="file" hidden multiple accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(e) => { void uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = '' }} /><span>▣</span><b>{uploading ? `Uploading ${uploading}…` : <>Take or drop photos as <em>{category}</em></>}</b><small>JPG, PNG or WebP · up to 10 MB each</small></label>
             </>}

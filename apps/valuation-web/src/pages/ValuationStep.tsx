@@ -171,7 +171,7 @@ export default function ValuationStep() {
     <ErrorText message={error ?? context.error ?? versions.error} />
     {ctx && !draftable && canDraft && <p className="pd-flag">This assignment is in {ASSIGNMENT_STATUS_LABELS[a.status]}, so a new valuation cannot be drafted. {stepNow < 3 ? 'Complete the site inspection first.' : 'Earlier versions are shown below.'}</p>}
 
-    <div className="pd-grid">
+    <div className="pd-grid va-swap">
       <div className="pd-main">
         <section className="pd-card" aria-labelledby="va-basis-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="va-basis-h">Compilation data health</h2><p>{ctx?.site ? `Site visit by ${ctx.site.inspector} on ${new Date(ctx.site.visitedAt).toLocaleDateString('en-IN')}.` : 'No submitted site visit yet.'} Pick the area to value; the source is written for you.</p></div></div></div>
