@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ASSIGNMENT_STATUS_LABELS, DOCUMENT_TYPE_LABELS, type DocumentType } from '@value-hub/valuation-shared'
 import InvoiceCard, { RaiseInvoice, type Invoice } from '../components/InvoiceBlock.tsx'
@@ -171,12 +171,12 @@ export default function SubmissionStep() {
             <div className="va-actions"><button className="pd-btn is-primary" disabled={busy || !!emailBlocked}>{busy ? 'Sending…' : send.channel === 'EMAIL' ? `Email report R${rep?.versionNumber}` : 'Record submission'}</button></div>
           </form>}
           {!issued && stage !== 'CLOSED' && <div className="pd-empty"><b>Issue the final report first</b><p>Only an issued report can be sent to the bank.</p></div>}
-          {(submissions.data?.length ?? 0) > 0 && <div className="sb-subs"><h4>Hand-overs</h4>{submissions.data?.map((s) => <article key={s.id}>
-            <div><b>R{s.reportVersion.versionNumber} via {s.channel.toLowerCase().replace('_', ' ')}</b><small>To {s.recipient} · {new Date(s.sentAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}{s.note ? ` · ${s.note}` : ''}</small>{s.deliveryError && <small className="is-bad">{s.deliveryError}</small>}</div>
-            <span className={`pd-pill ${DELIVERY[s.deliveryStatus][1]}`}>{DELIVERY[s.deliveryStatus][0]}</span>
-            {s.acknowledgedAt ? <span className="pd-pill is-verified">Acknowledged {formatDate(s.acknowledgedAt)}</span> : s.deliveryStatus !== 'FAILED' && canAct && (ack?.id === s.id ? null : <button type="button" className="pd-btn is-ghost" onClick={() => setAck({ id: s.id, date: today(), note: '' })}>Record acknowledgement</button>)}
-            {ack?.id === s.id && <form className="in-inline-form sb-ack" onSubmit={acknowledge}><label>Acknowledged on<input type="date" required max={today()} value={ack.date} onChange={(e) => setAck({ ...ack, date: e.target.value })} /></label><label>Note<input value={ack.note} onChange={(e) => setAck({ ...ack, note: e.target.value })} placeholder="Who confirmed, how" /></label><div><button type="button" className="pd-btn is-ghost" onClick={() => setAck(null)}>Cancel</button><button className="pd-btn is-primary" disabled={busy}>Save</button></div></form>}
-          </article>)}</div>}
+          {(submissions.data?.length ?? 0) > 0 && <div className="sb-subs"><h4>Dispatch history</h4><div className="in-table-wrap"><table className="in-table"><thead><tr><th>Channel</th><th>Recipient</th><th>Timestamp</th><th>Status</th><th>Acknowledgement</th></tr></thead><tbody>{submissions.data?.map((s) => <Fragment key={s.id}><tr>
+            <td><b>R{s.reportVersion.versionNumber} · {s.channel.toLowerCase().replace('_', ' ')}</b>{s.note && <small>{s.note}</small>}</td><td>{s.recipient}</td>
+            <td>{new Date(s.sentAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</td>
+            <td><span className={`pd-pill ${DELIVERY[s.deliveryStatus][1]}`}>{DELIVERY[s.deliveryStatus][0]}</span>{s.deliveryError && <small className="is-bad">{s.deliveryError}</small>}</td>
+            <td>{s.acknowledgedAt ? <span className="pd-pill is-verified">Acknowledged {formatDate(s.acknowledgedAt)}</span> : s.deliveryStatus !== 'FAILED' && canAct ? (ack?.id === s.id ? null : <button type="button" className="pd-btn is-ghost" onClick={() => setAck({ id: s.id, date: today(), note: '' })}>Record acknowledgement</button>) : '—'}</td></tr>
+            {ack?.id === s.id && <tr><td colSpan={5}><form className="in-inline-form sb-ack" onSubmit={acknowledge}><label>Acknowledged on<input type="date" required max={today()} value={ack.date} onChange={(e) => setAck({ ...ack, date: e.target.value })} /></label><label>Note<input value={ack.note} onChange={(e) => setAck({ ...ack, note: e.target.value })} placeholder="Who confirmed, how" /></label><div><button type="button" className="pd-btn is-ghost" onClick={() => setAck(null)}>Cancel</button><button className="pd-btn is-primary" disabled={busy}>Save</button></div></form></td></tr>}</Fragment>)}</tbody></table></div></div>}
         </section>
 
         <section className="pd-card" aria-labelledby="sb-q-h">

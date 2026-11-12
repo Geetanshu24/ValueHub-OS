@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ErrorText, errorMessage, formatDate, formatInr } from './ui.tsx'
 import FormDialog, { type DialogField } from './FormDialog.tsx'
-import { api, openFile } from '../lib/api.ts'
+import { api, fileBlobUrl, openFile } from '../lib/api.ts'
 
 export interface Payment { id: string; amount: string; receivedOn: string; reference: string | null; voidedAt: string | null; voidReason: string | null }
 export interface FollowUp { id: string; channel: string; note: string; contactedAt: string; nextActionOn: string | null; sentTo: string | null; delivery: string | null }
@@ -16,6 +16,16 @@ export interface Invoice {
 export const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10)
 const STATUS_TONE: Record<string, string> = { DRAFT: 'is-warn', SENT: 'is-submitted', PARTIALLY_PAID: 'is-warn', PAID: 'is-verified', CANCELLED: 'is-type' }
 
+function InvoicePreview({ invoiceId }: { invoiceId: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let made: string | null = null; let cancelled = false
+    fileBlobUrl(`/invoices/${invoiceId}/file`).then((f) => { if (cancelled) URL.revokeObjectURL(f.url); else { made = f.url; setUrl(f.url) } }).catch(() => { /* the PDF button still works */ })
+    return () => { cancelled = true; if (made) URL.revokeObjectURL(made) }
+  }, [invoiceId])
+  return <div className="iv-preview">{url ? <iframe title="Invoice preview" src={url} /> : <p className="pd-muted">Loading the invoice…</p>}</div>
+}
+
 type Dialog = { kind: 'pay' } | { kind: 'chase' } | { kind: 'void'; paymentId: string } | { kind: 'cancel' } | null
 
 // One invoice with everything that can be done to it: send, record a payment,
@@ -23,6 +33,7 @@ type Dialog = { kind: 'pay' } | { kind: 'chase' } | { kind: 'void'; paymentId: s
 // dialog, and the API keeps the rules (a payment is voided with a reason, never deleted).
 export default function InvoiceCard({ invoice, canBill, isAdmin, onChange, showAssignment = true }: { invoice: Invoice; canBill: boolean; isAdmin: boolean; onChange: () => void; showAssignment?: boolean }) {
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [preview, setPreview] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const total = Number(invoice.amount)
   const share = total > 0 ? Math.min(100, (invoice.paid / total) * 100) : 0
@@ -68,10 +79,12 @@ export default function InvoiceCard({ invoice, canBill, isAdmin, onChange, showA
     {invoice.payments.length > 0 && <ul className="iv-list">{invoice.payments.map((p) => <li key={p.id} className={p.voidedAt ? 'is-void' : ''}><span>₹ {formatInr(p.amount)} on {formatDate(p.receivedOn)}{p.reference ? ` · ${p.reference}` : ''}{p.voidedAt ? ` · voided: ${p.voidReason}` : ''}</span>{isAdmin && !p.voidedAt && <button type="button" onClick={() => setDialog({ kind: 'void', paymentId: p.id })}>Void</button>}</li>)}</ul>}
     {invoice.followUps.length > 0 && <ul className="iv-list is-follow">{invoice.followUps.map((f) => <li key={f.id}><span>{formatDate(f.contactedAt)} · {f.channel.toLowerCase()}: {f.note}{f.delivery ? ` (email ${f.delivery.toLowerCase()})` : ''}{f.nextActionOn ? ` · next ${formatDate(f.nextActionOn)}` : ''}</span></li>)}</ul>}
     <ErrorText message={error} />
+    {preview && <InvoicePreview invoiceId={invoice.id} />}
     <div className="iv-actions">
+      <button type="button" className="pd-btn is-ghost" onClick={() => setPreview(!preview)}>{preview ? 'Hide preview' : 'Preview invoice'}</button>
       <button type="button" className="pd-btn is-ghost" onClick={() => void openFile(`/invoices/${invoice.id}/file`).catch((c: unknown) => setError(errorMessage(c)))}>PDF</button>
       {canBill && invoice.status === 'DRAFT' && <button type="button" className="pd-btn is-primary" onClick={() => void run(() => api.post(`/invoices/${invoice.id}/send`, {}))}>Mark as sent</button>}
-      {canBill && open && <button type="button" className="pd-btn is-primary" onClick={() => setDialog({ kind: 'pay' })}>Record payment</button>}
+      {canBill && open && <button type="button" className="pd-btn is-primary" onClick={() => setDialog({ kind: 'pay' })}>✓ Mark paid / record payment</button>}
       {canBill && open && <button type="button" className="pd-btn is-ghost" onClick={() => setDialog({ kind: 'chase' })}>Log follow-up</button>}
       {isAdmin && ['DRAFT', 'SENT'].includes(invoice.status) && <button type="button" className="pd-btn is-ghost" onClick={() => setDialog({ kind: 'cancel' })}>Cancel</button>}
     </div>

@@ -128,6 +128,12 @@ export default function QualityReview() {
     setBusy(true); setError(null)
     try { await api.patch(`/assignments/${id}/status`, { status: 'APPROVED' }); navigate(stepPath(5, id)) } catch (caught) { setError(errorMessage(caught)); setBusy(false) }
   }
+  // Backward moves go one stage at a time, so a return to Inspection or Documents passes through the stages between.
+  async function returnTo(chain: string[], go: string) {
+    setBusy(true); setError(null)
+    try { for (const status of chain) await api.patch(`/assignments/${id}/status`, { status }); navigate(go) } catch (caught) { setError(errorMessage(caught)); setBusy(false) }
+  }
+
   async function sendBack() {
     setBusy(true); setError(null)
     try { await api.patch(`/assignments/${id}/status`, { status: 'VALUATION' }); navigate(stepPath(3, id)) } catch (caught) { setError(errorMessage(caught)); setBusy(false) }
@@ -198,6 +204,18 @@ export default function QualityReview() {
           </div>
         </section>}
 
+        {v && <section className="pd-card" aria-labelledby="qr-fig-h">
+          <div className="pd-card-head"><div><span className="pd-step-tag">₹</span><div><h2 id="qr-fig-h">Final certified appraised figures</h2><p>As they will be certified in the report. Realizable and distress values follow the standard 90% and 80% of fair market value.</p></div></div></div>
+          <div className="qr-figs"><div><small>Fair market value (₹)</small><b>{formatInr(v.totalValue)}</b></div><div><small>Realizable value (₹) · 90%</small><b>{formatInr(Number(v.totalValue) * 0.9)}</b></div><div><small>Distress / forced sale (₹) · 80%</small><b>{formatInr(Number(v.totalValue) * 0.8)}</b></div></div>
+          <p className="qr-meta">To change a figure, revise the valuation in Valuation Workings; a certified value is never edited here.</p>
+        </section>}
+
+        {report && <section className="pd-card qr-seal" aria-labelledby="qr-seal-h">
+          <div className="pd-card-head"><div><span className="pd-step-tag">✍</span><div><h2 id="qr-seal-h">Valuer signature &amp; seal</h2><p>Sign-off record for this report.</p></div></div><span className={`pd-pill ${report.approvedAt ? 'is-verified' : 'is-warn'}`}>{report.approvedAt ? 'Signed off' : 'Awaiting sign-off'}</span></div>
+          <dl className="qr-seal-grid"><div><dt>Prepared by</dt><dd>{rep?.author ?? 'unknown'}</dd></div><div><dt>Report</dt><dd>R{report.versionNumber} · {report.template.name}</dd></div><div><dt>Approved on</dt><dd>{report.approvedAt ? new Date(report.approvedAt).toLocaleString('en-IN') : 'Not yet'}</dd></div><div><dt>Issued on</dt><dd>{report.issuedAt ? new Date(report.issuedAt).toLocaleString('en-IN') : 'Not yet'}</dd></div></dl>
+          <p className="qr-meta">Approval is recorded against the signed-in person with the time. A certificate-based digital signature (for example an e-sign provider) is not connected yet.</p>
+        </section>}
+
         {(reports.data?.length ?? 0) > 1 && <section className="pd-card" aria-labelledby="qr-hist-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="qr-hist-h">Report history</h2><p>Earlier drafts are kept. Issued reports are never changed.</p></div></div></div>
           <div className="qr-history">{reports.data?.map((x) => <div key={x.id}><b>R{x.versionNumber}</b><span>{x.template.name} v{x.template.version}</span><span className={`pd-pill is-${x.status === 'APPROVED' || x.status === 'ISSUED' ? 'verified' : x.status === 'IN_REVIEW' ? 'submitted' : x.status === 'DRAFT' ? 'warn' : 'type'}`}>{x.status.replace('_', ' ').toLowerCase()}</span><small>{new Date(x.createdAt).toLocaleDateString('en-IN')}</small><button type="button" className="pd-btn is-ghost" onClick={() => void openFile(`/reports/${x.id}/file`).catch((c: unknown) => setError(errorMessage(c)))}>Open</button></div>)}</div>
@@ -207,6 +225,10 @@ export default function QualityReview() {
       <aside className="pd-aside"><ReadyCard title="Ready to approve?" readiness={r} summary={!r ? '' : r.canProceed ? 'Both sign-offs are in. You can move on.' : 'The valuation and the report each need a second person’s approval.'}>
         {a.status === 'QUALITY_REVIEW' ? (canPrepare ? <>
           <button type="button" className="pd-btn is-primary is-block" disabled={!r?.canProceed || busy} onClick={() => void advance()}>Continue to Approval &amp; Submission →</button>
+          <div className="qr-returns"><small>Not ready? Return it:</small>
+            <button type="button" className="pd-btn is-ghost is-block" disabled={busy} onClick={() => setConfirmBack(true)}>↩ Return to drafter</button>
+            <button type="button" className="pd-btn is-ghost is-block" disabled={busy} onClick={() => void returnTo(['VALUATION', 'INSPECTION'], stepPath(2, id))}>⛑ Request re-inspection</button>
+            <button type="button" className="pd-btn is-ghost is-block" disabled={busy} onClick={() => void returnTo(['VALUATION', 'INSPECTION', 'DOCUMENTS'], stepPath(1, id))}>▤ Request more documents</button></div>
           {confirmBack ? <div className="pd-confirm in-gap"><b>Send back to valuation?</b><p>The reviewer’s comments are not recorded here, so tell the valuer why. The valuation can then be revised.</p><div><button type="button" className="pd-btn is-ghost" onClick={() => setConfirmBack(false)}>Not yet</button><button type="button" className="pd-btn is-primary" disabled={busy} onClick={() => void sendBack()}>Send back</button></div></div> : <button type="button" className="pd-btn is-block in-gap" onClick={() => setConfirmBack(true)}>Send back to Valuation…</button>}
         </> : <p className="pd-muted">Only a valuer or admin can move this assignment forward.</p>)
           : stepNow > 4 ? <div className="pd-moved"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(Math.min(stepNow, 5), a.id)} className="pd-btn is-primary">Open next step →</Link></div> : null}

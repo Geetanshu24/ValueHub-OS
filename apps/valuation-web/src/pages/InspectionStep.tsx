@@ -22,6 +22,12 @@ interface Discrepancy { id: string; fieldKey: string; description: string; sourc
 interface Documented { fieldKey: string; value: number; state: string; source: string; documentType: string }
 interface Context { documentedAreas: Documented[]; readiness: Readiness }
 
+const AMENITIES = ['Electricity', 'Municipal water', 'Sewerage', 'Boundary wall', 'Covered parking', 'Lift / elevator', 'Power backup', 'Security guard', 'Common park', 'Overhead tank']
+const FLOOR_LEVELS = ['Basement', 'Ground floor', 'First floor', 'Second floor', 'Third floor', 'Terrace / mumty']
+interface FloorRow { level: string; use: string; length: string; width: string; condition: string; remarks: string }
+const blankFloor: FloorRow = { level: 'Ground floor', use: 'Residential', length: '', width: '', condition: 'Good', remarks: '' }
+const SQFT_PER_SQM = 10.7639104
+const parseFloors = (text: string | undefined): FloorRow[] => { try { const v = JSON.parse(text ?? '[]'); return Array.isArray(v) ? v : [] } catch { return [] } }
 const STAGES: [InspectionStatus, string][] = [['SCHEDULED', 'Scheduled'], ['IN_PROGRESS', 'On site'], ['SUBMITTED', 'Submitted'], ['REVIEWED', 'Field-reviewed']]
 const UNITS = { sqm: { label: 'sq. m', perSqm: 1 }, sqft: { label: 'sq. ft', perSqm: 0.09290304 }, sqyd: { label: 'sq. yd', perSqm: 0.83612736 } } as const
 type Unit = keyof typeof UNITS
@@ -84,6 +90,14 @@ export default function InspectionStep() {
   const [resolving, setResolving] = useState<{ id: string; outcome: (typeof DISCREPANCY_RESOLUTIONS)[number]; note: string } | null>(null)
   const [confirmSubmit, setConfirmSubmit] = useState(false)
   const advanced = useRef(false)
+  const [floor, setFloor] = useState<FloorRow>(blankFloor)
+  const [certified, setCertified] = useState(false)
+  const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
+  useEffect(() => {
+    const on = () => setOnline(true); const off = () => setOnline(false)
+    window.addEventListener('online', on); window.addEventListener('offline', off)
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
+  }, [])
 
   const list = visits.data ?? []
   const visit = list.find((v) => v.id === pick) ?? list.find((v) => !locked(v.status)) ?? list[0] ?? null
@@ -192,6 +206,11 @@ export default function InspectionStep() {
   const totalFields = OBSERVATION_SECTIONS.reduce((n, s) => n + s.fields.length, 0)
   const unconfirmedCaptions = visit ? visit.photos.filter((p) => !p.captionConfirmed).length : 0
   const stageIndex = visit ? STAGES.findIndex(([s]) => s === visit.status) : -1
+  const floors = parseFloors(obs.floors)
+  const setFloors = (rows: FloorRow[]) => { setObs({ ...obs, floors: JSON.stringify(rows) }); setObsDirty(true) }
+  const amenities = (obs.amenities ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  const setAmenities = (list: string[]) => { setObs({ ...obs, amenities: list.join(', ') }); setObsDirty(true) }
+  const totalCovered = floors.reduce((n, row) => n + Number(row.length) * Number(row.width), 0)
   const stepNow = a ? STEP_OF_STATUS[a.status] : 2
   const pending = (discrepancies.data ?? []).filter((d) => d.status === 'UNRESOLVED' || d.status === 'ESCALATED')
 
@@ -199,7 +218,7 @@ export default function InspectionStep() {
   if (!a) return <div className="pd-shell"><p className="pd-muted">Loading assignment…</p></div>
 
   return <div className="pd-shell">
-    <StageBanner icon="⛑" title={`${visit?.inspector.fullName ?? a.assignedValuer.fullName} · Field Site Inspector`} tag={visit && locked(visit.status) ? 'Field Certified' : undefined} line={`Case Ref: ${a.code}${visit ? ` · Scheduled: ${when(visit.visitedAt)}` : ''}`} asideLabel="Inspection Progress" aside={visit ? (STAGES.find(([k]) => k === visit.status)?.[1] ?? visit.status) : 'Not scheduled'} />
+    <StageBanner icon="⛑" title={`${visit?.inspector.fullName ?? a.assignedValuer.fullName} · Field Site Inspector`} tag={visit && locked(visit.status) ? 'Field Certified' : undefined} line={`Case Ref: ${a.code}${visit ? ` · Scheduled: ${when(visit.visitedAt)}` : ''}`} asideLabel="Inspection Progress" aside={visit ? (STAGES.find(([k]) => k === visit.status)?.[1] ?? visit.status) : 'Not scheduled'}>{editable && <button type="button" className="stage-sync" disabled={busy || !obsDirty} onClick={() => void saveObservations()} title="Saves the observations and floor details"><i className={online ? 'is-on' : ''} /> {online ? (obsDirty ? 'Sync now' : 'Live sync: all saved') : 'Offline: will sync when back'}</button>}</StageBanner>
     <StepHeader a={a} here={2} eyebrow="STEP 3 · SITE INSPECTION" title="Site Inspection" subtitle="Visit the property, measure it, photograph it and record what you see. Differences from the documents are flagged, never overwritten." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
     <div className="brief-card"><div className="brief-card-head"><b>Pre-filled case briefing (from documents, for reference only)</b><span>Strict rule: record ACTUAL site observations independently</span></div>
@@ -289,9 +308,31 @@ export default function InspectionStep() {
                 </label>)}</div>}
               </div>
             })}</div>
+            <div className="in-floors">
+              <div className="in-floors-head"><b>Floor-wise built-up details</b><small>Covered area = length × width in feet. Carpet is estimated at 85% of covered.</small></div>
+              {floors.length > 0 && <div className="in-table-wrap"><table className="in-table"><thead><tr><th>Floor</th><th>Use</th><th className="is-num">L (ft)</th><th className="is-num">W (ft)</th><th className="is-num">Covered (sq ft)</th><th className="is-num">Carpet est.</th><th>Condition</th><th>Remarks</th><th /></tr></thead><tbody>
+                {floors.map((row, i) => { const covered = Number(row.length) * Number(row.width); return <tr key={i}><td><b>{row.level}</b></td><td>{row.use}</td><td className="is-num">{row.length}</td><td className="is-num">{row.width}</td><td className="is-num">{fmt(covered)}</td><td className="is-num">{fmt(covered * 0.85)}</td><td>{row.condition}</td><td>{row.remarks}</td><td>{editable && <button type="button" className="pd-btn is-ghost" aria-label={`Remove ${row.level}`} onClick={() => setFloors(floors.filter((_, k) => k !== i))}>×</button>}</td></tr> })}
+                <tr className="in-floors-total"><td colSpan={4}>Total built-up</td><td className="is-num">{fmt(totalCovered)} sq ft</td><td className="is-num">{fmt(totalCovered * 0.85)}</td><td colSpan={3}>{fmt(totalCovered / SQFT_PER_SQM)} sq m covered</td></tr></tbody></table></div>}
+              {editable && <div className="in-floor-form">
+                <select aria-label="Floor level" value={floor.level} onChange={(e) => setFloor({ ...floor, level: e.target.value })}>{FLOOR_LEVELS.map((l) => <option key={l}>{l}</option>)}</select>
+                <select aria-label="Use" value={floor.use} onChange={(e) => setFloor({ ...floor, use: e.target.value })}>{['Residential', 'Commercial', 'Industrial', 'Vacant', 'Storage / parking'].map((u) => <option key={u}>{u}</option>)}</select>
+                <input type="number" min="0" step="0.01" placeholder="Length ft" value={floor.length} onChange={(e) => setFloor({ ...floor, length: e.target.value })} />
+                <input type="number" min="0" step="0.01" placeholder="Width ft" value={floor.width} onChange={(e) => setFloor({ ...floor, width: e.target.value })} />
+                <select aria-label="Condition" value={floor.condition} onChange={(e) => setFloor({ ...floor, condition: e.target.value })}>{['Good', 'Average', 'Poor'].map((c) => <option key={c}>{c}</option>)}</select>
+                <input placeholder="Remarks" value={floor.remarks} onChange={(e) => setFloor({ ...floor, remarks: e.target.value })} />
+                <button type="button" className="pd-btn is-primary" disabled={!(Number(floor.length) > 0 && Number(floor.width) > 0)} onClick={() => { setFloors([...floors, floor]); setFloor({ ...blankFloor, level: FLOOR_LEVELS[Math.min(FLOOR_LEVELS.length - 1, floors.length + 1)] }) }}>＋ Add floor</button>
+              </div>}
+            </div>
+            <div className="in-amenities"><b>Amenities and services seen</b><div>{AMENITIES.map((item) => <label key={item}><input type="checkbox" disabled={!editable} checked={amenities.includes(item)} onChange={() => setAmenities(amenities.includes(item) ? amenities.filter((x) => x !== item) : [...amenities, item])} /> {item}</label>)}</div></div>
           </section>
 
         </>}
+
+        {visit && editable && <section className="pd-card in-sign" aria-labelledby="in-sign-h">
+          <div className="pd-card-head"><div><span className="pd-step-tag">✍</span><div><h2 id="in-sign-h">Field certification</h2><p>Signing locks this visit and flags any difference from the documents.</p></div></div></div>
+          <label className="in-sign-check"><input type="checkbox" checked={certified} onChange={(e) => setCertified(e.target.checked)} /> I visited the property in person and recorded only what I actually saw and measured.</label>
+          <button type="button" className="pd-btn is-primary" disabled={!certified || busy || visit.measurements.length === 0 || unconfirmedCaptions > 0 || obsDirty} onClick={() => void submitVisit()}>{obsDirty ? 'Save observations first' : visit.measurements.length === 0 ? 'Add a measurement first' : unconfirmedCaptions > 0 ? `Confirm ${unconfirmedCaptions} caption(s) first` : 'Sign & submit inspection'}</button>
+        </section>}
 
         {(discrepancies.data?.length ?? 0) > 0 && <section className="pd-card" aria-labelledby="in-disc-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="in-disc-h">Differences found</h2><p>Both values are kept. You decide whether a difference is resolved, disclosed in the report, or escalated.</p></div></div></div>

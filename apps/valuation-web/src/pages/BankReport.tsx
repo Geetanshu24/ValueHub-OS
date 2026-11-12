@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Card, ErrorText, errorMessage, ghostButtonClass, buttonClass, inputClass, PageHeader } from '../components/ui.tsx'
 import { api, downloadFile } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
@@ -14,7 +14,8 @@ export default function BankReport() {
   const { id = '' } = useParams()
   const { user } = useAuth()
   const canEdit = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER'
-  const [chosen, setChosen] = useState('')
+  const [params] = useSearchParams()
+  const [chosen, setChosen] = useState(params.get('format') ?? '')
   const query = chosen ? `?format=${chosen}` : ''
   const form = useFetch<Form>(`/assignments/${id}/bank-report${query}`)
   const [values, setValues] = useState<Record<string, string>>({})

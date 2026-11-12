@@ -93,10 +93,10 @@ export function ReadyCard({ title, readiness, summary, children }: { title: stri
 }
 
 // The navy banner each ValuerPro module opens with: who is working, on which case, and how far along.
-export function StageBanner({ icon, title, tag, line, aside, asideLabel }: { icon: string; title: string; tag?: string; line: string; aside?: string; asideLabel?: string }) {
+export function StageBanner({ icon, title, tag, line, aside, asideLabel, children }: { icon: string; title: string; tag?: string; line: string; aside?: string; asideLabel?: string; children?: React.ReactNode }) {
   return <div className="stage-banner">
     <div className="stage-banner-main"><span className="stage-banner-icon">{icon}</span>
       <div><div className="stage-banner-title"><h2>{title}</h2>{tag && <em>{tag}</em>}</div><p>{line}</p></div></div>
-    {aside && <div className="stage-banner-aside"><small>{asideLabel}</small><b>{aside}</b></div>}
+    <div className="stage-banner-right">{aside && <div className="stage-banner-aside"><small>{asideLabel}</small><b>{aside}</b></div>}{children}</div>
   </div>
 }

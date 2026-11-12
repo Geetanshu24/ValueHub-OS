@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ASSIGNMENT_STATUS_LABELS, DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, INTAKE_SOURCE_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS, documentChecklist, factLabel,
@@ -23,6 +23,10 @@ interface DocRow {
 }
 interface Suggestion { id: string; label: string; value: string; from: string; patch: Record<string, unknown> }
 
+const CATEGORY: Record<DocumentType, string> = {
+  BANK_INSTRUCTION: 'Bank instruction', SALE_DEED: 'Ownership / title', MAGISTRATE_CERTIFICATE: 'Ownership / title', REVENUE_RECORD: 'Revenue records', PATWARI_REPORT: 'Revenue records',
+  SHAJRA_PLAN: 'Layout / location', APPROVED_PLAN: 'Layout / location', OCCUPATION_CERTIFICATE: 'Layout / location', TAX_RECEIPT: 'Utilities & tax', WATER_BILL: 'Utilities & tax', OTHER: 'Other',
+}
 const sizeLabel = (bytes: number) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
 export default function PropertyDocuments() {
@@ -53,6 +57,9 @@ export default function PropertyDocuments() {
   const [sel, setSel] = useState<string | null>(null)
   const [tab, setTab] = useState<'all' | 'verified' | 'pending'>('all')
   const [view, setView] = useState<{ url: string; type: string } | null>(null)
+  const [pageNo, setPageNo] = useState(1)
+  const [factsTick, setFactsTick] = useState(0)
+  const [editFact, setEditFact] = useState<{ id: string; value: string } | null>(null)
 
   const reloadAll = () => { assignment.reload(); property.reload(); docs.reload(); readiness.reload() }
   const documents = docs.data?.items
@@ -72,10 +79,13 @@ export default function PropertyDocuments() {
     Promise.all(documents.map((d) => api.get<DocFact[]>(`/documents/${d.id}/fields`))).then((all) => { if (!cancelled) setFacts(all.flat()) }).catch(() => { if (!cancelled) setFacts([]) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docKey])
+  }, [docKey, factsTick])
 
   const selected = documents?.find((d) => d.id === sel) ?? documents?.[0] ?? null
   const selectedId = selected?.id
+  const detail = useFetch<{ pageCount: number | null }>(selectedId ? `/documents/${selectedId}` : null)
+  const pageCount = detail.data?.pageCount ?? null
+  useEffect(() => { setPageNo(1); setEditFact(null) }, [selectedId])
   useEffect(() => {
     if (!selectedId) { setView(null); return }
     let url: string | null = null; let cancelled = false
@@ -126,6 +136,11 @@ export default function PropertyDocuments() {
   async function reclassify(doc: DocRow, type: DocumentType) {
     setError(null)
     try { await api.patch(`/documents/${doc.id}`, { type }); reloadAll() } catch (caught) { setError(errorMessage(caught)) }
+  }
+
+  async function reviewFact(factId: string, body: { outcome: 'VERIFIED' | 'UNKNOWN' | 'CORRECTED'; verifiedValue?: string }) {
+    setError(null)
+    try { await api.patch(`/document-fields/${factId}/review`, body); setEditFact(null); setFactsTick((n) => n + 1); reloadAll() } catch (caught) { setError(errorMessage(caught)) }
   }
 
   function startEdit() {
@@ -207,18 +222,19 @@ export default function PropertyDocuments() {
           <div className="vault-pane vault-list">
             <div className="vault-pane-head"><div><h3>Required Documents</h3><span>{haveCount} of {checklist.length} received</span></div><em>{checklist.length ? Math.round((haveCount / checklist.length) * 100) : 0}% Ready</em></div>
             <div className="vault-tabs">{([['all', `All (${checklist.length})`], ['verified', `Verified (${verifiedCount})`], ['pending', `Pending (${checklist.length - verifiedCount})`]] as const).map(([key, label]) => <button key={key} type="button" className={tab === key ? 'is-on' : ''} onClick={() => setTab(key)}>{label}</button>)}</div>
-            <div className="vault-items">{checklist.map((entry) => {
+            <div className="vault-items">{checklist.map((entry, index) => {
               const have = (documents ?? []).filter((d) => d.type === entry.type)
               const verified = have.length > 0 && have.every((d) => d.facts.total > 0 && d.facts.unverified === 0)
               if (tab === 'verified' && !verified) return null
               if (tab === 'pending' && verified) return null
               const doc = have[0]
               const icon = !have.length ? (entry.level === 'required' ? '❌' : '⏳') : verified ? '✅' : '⏳'
-              return <div key={entry.type} className={`vault-item ${doc && doc.id === selected?.id ? 'is-active' : ''} ${dragOver === entry.type ? 'is-over' : ''}`} onClick={() => doc && setSel(doc.id)} onDragOver={(e) => { if (canEdit) { e.preventDefault(); setDragOver(entry.type) } }} onDragLeave={() => setDragOver(null)} onDrop={(e) => drop(e, entry.type)}>
+              const heading = CATEGORY[entry.type] !== (index > 0 ? CATEGORY[checklist[index - 1].type] : null) ? <span className="vault-cat">{CATEGORY[entry.type]}</span> : null
+              return <Fragment key={entry.type}>{heading}<div className={`vault-item ${doc && doc.id === selected?.id ? 'is-active' : ''} ${dragOver === entry.type ? 'is-over' : ''}`} onClick={() => doc && setSel(doc.id)} onDragOver={(e) => { if (canEdit) { e.preventDefault(); setDragOver(entry.type) } }} onDragLeave={() => setDragOver(null)} onDrop={(e) => drop(e, entry.type)}>
                 <span className="vault-icon">{icon}</span>
                 <div className="vault-item-body"><b>{DOCUMENT_TYPE_LABELS[entry.type]}</b><small className={have.length ? '' : entry.level === 'required' ? 'is-red' : 'is-amber'}>{have.length ? `${have.length} file${have.length === 1 ? '' : 's'} · ${verified ? 'Verified' : doc.facts.unverified ? `${doc.facts.unverified} to review` : 'No facts read yet'}` : entry.level === 'required' ? 'Required · not uploaded' : 'Recommended · not uploaded'}</small></div>
                 {canEdit && <label className="vault-add" onClick={(e) => e.stopPropagation()} title={have.length ? 'Add another file' : 'Upload'}><input type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" onChange={(e) => { void upload(Array.from(e.target.files ?? []), entry.type); e.target.value = '' }} />＋</label>}
-              </div>
+              </div></Fragment>
             })}
               {tab === 'all' && extras.length > 0 && <><span className="vault-cat">Other documents</span>{extras.map((d) => <div key={d.id} className={`vault-item ${d.id === selected?.id ? 'is-active' : ''}`} onClick={() => setSel(d.id)}><span className="vault-icon">{d.facts.unverified ? '⏳' : '✅'}</span><div className="vault-item-body"><b>{DOCUMENT_TYPE_LABELS[d.type]}</b><small title={d.fileName}>{d.fileName}</small></div></div>)}</>}
               {canEdit && tab === 'all' && <div className={`vault-item is-other ${dragOver === 'OTHER' ? 'is-over' : ''}`} onDragOver={(e) => { e.preventDefault(); setDragOver('OTHER') }} onDragLeave={() => setDragOver(null)} onDrop={(e) => drop(e, otherType)}>
@@ -231,7 +247,8 @@ export default function PropertyDocuments() {
             {!selected ? <div className="pd-empty"><b>No documents yet</b><p>Upload the bank instruction and title papers to begin.</p></div> : <>
               <div className="vault-pane-head"><div><h3 title={selected.fileName}>{selected.fileName}</h3><span>{DOCUMENT_TYPE_LABELS[selected.type]} · {sizeLabel(selected.sizeBytes)} · {new Date(selected.uploadedAt).toLocaleDateString('en-IN')} · {INTAKE_SOURCE_LABELS[selected.source]}</span></div>
                 <div className="vault-viewer-actions"><span className={`pd-pill ${selected.assignmentId === id ? 'is-mine' : 'is-earlier'}`}>{selected.assignmentId === id ? 'This assignment' : 'Earlier work'}</span><button type="button" className="pd-btn is-ghost" aria-label={`Open ${selected.fileName}`} onClick={() => void openFile(`/documents/${selected.id}/file`).catch((c: unknown) => setError(errorMessage(c)))}>↗ Open</button></div></div>
-              <div className="vault-frame">{!view ? <p className="pd-muted">Loading file…</p> : view.type.startsWith('image/') ? <img src={view.url} alt={selected.fileName} /> : <iframe src={view.url} title={selected.fileName} />}<span className="vault-watermark">VERIFIED COPY · FOR VALUATION ONLY</span></div>
+              {view && !view.type.startsWith('image/') && <div className="vault-pager"><button type="button" className="pd-btn is-ghost" disabled={pageNo <= 1} onClick={() => setPageNo(pageNo - 1)}>‹ Prev</button><span>Page <input type="number" min={1} max={pageCount ?? undefined} value={pageNo} onChange={(e) => setPageNo(Math.max(1, Number(e.target.value) || 1))} aria-label="Page number" /> of {pageCount ?? '?'}</span><button type="button" className="pd-btn is-ghost" disabled={pageCount !== null && pageNo >= pageCount} onClick={() => setPageNo(pageNo + 1)}>Next ›</button></div>}
+              <div className="vault-frame">{!view ? <p className="pd-muted">Loading file…</p> : view.type.startsWith('image/') ? <img src={view.url} alt={selected.fileName} /> : <iframe key={pageNo} src={`${view.url}#page=${pageNo}&toolbar=0`} title={selected.fileName} />}<span className="vault-watermark">VERIFIED COPY · FOR VALUATION ONLY</span></div>
               {canEdit && <div className="vault-retype"><label>Document type<select className="pd-type-select" value={selected.type} onChange={(e) => void reclassify(selected, e.target.value as DocumentType)} aria-label={`Type of ${selected.fileName}`}>{DOCUMENT_TYPES.map((v) => <option key={v} value={v}>{DOCUMENT_TYPE_LABELS[v]}</option>)}</select></label></div>}
             </>}
           </div>
@@ -239,10 +256,14 @@ export default function PropertyDocuments() {
           <div className="vault-pane vault-facts">
             <div className="vault-pane-head"><div><h3>Extracted Fields</h3><span>{selected ? `${selectedFacts.length} read from this document` : 'Select a document'}</span></div>{selected && <span className={`pd-pill ${selected.facts.unverified ? 'is-warn' : selected.facts.total ? 'is-verified' : 'is-none'}`}>{selected.facts.unverified ? `${selected.facts.unverified} to review` : selected.facts.total ? 'Verified' : selected.ocrStatus === 'NO_TEXT' ? 'No text found' : selected.ocrStatus === 'FAILED' ? 'Read failed' : 'No facts yet'}</span>}</div>
             <div className="vault-fields">{selectedFacts.length === 0 ? <p className="pd-muted">{selected ? 'No facts have been read from this document yet.' : ''}</p> : selectedFacts.map((f) => <div key={f.id} className="vault-field">
-              <div><small>{factLabel(f.fieldKey)}</small><b>{(f.verifiedValue ?? f.extractedValue) || '—'}</b></div>
-              <span className={`badge-${f.state === 'UNVERIFIED' ? 'verify' : f.state === 'UNKNOWN' ? 'missing' : 'matched'}`}>{f.state === 'UNVERIFIED' ? 'To review' : f.state === 'CORRECTED' ? 'Corrected' : f.state === 'UNKNOWN' ? 'Unknown' : 'Verified'}</span>
+              <div className="vault-field-main"><div><small>{factLabel(f.fieldKey)}{f.pageNumber ? <button type="button" className="vault-page-link" onClick={() => setPageNo(f.pageNumber)}> p.{f.pageNumber}</button> : null}</small>
+                {editFact?.id === f.id ? <input className="vault-edit" autoFocus value={editFact.value} onChange={(e) => setEditFact({ id: f.id, value: e.target.value })} /> : <b>{(f.verifiedValue ?? f.extractedValue) || '—'}</b>}</div>
+                <span className={`badge-${f.state === 'UNVERIFIED' ? 'verify' : f.state === 'UNKNOWN' ? 'missing' : 'matched'}`}>{f.state === 'UNVERIFIED' ? 'To review' : f.state === 'CORRECTED' ? 'Corrected' : f.state === 'UNKNOWN' ? 'Unknown' : 'Verified'}</span></div>
+              {canReview && <div className="vault-field-actions">{editFact?.id === f.id
+                ? <><button type="button" className="pd-btn is-primary" disabled={!editFact.value.trim()} onClick={() => void reviewFact(f.id, { outcome: 'CORRECTED', verifiedValue: editFact.value.trim() })}>Save</button><button type="button" className="pd-btn is-ghost" onClick={() => setEditFact(null)}>Cancel</button></>
+                : <><button type="button" className="pd-btn is-ok" disabled={f.state === 'VERIFIED'} onClick={() => void reviewFact(f.id, { outcome: 'VERIFIED' })}>✓ Verify</button><button type="button" className="pd-btn is-ghost" onClick={() => setEditFact({ id: f.id, value: f.verifiedValue ?? f.extractedValue })}>✎ Correct</button><button type="button" className="pd-btn is-ghost" disabled={f.state === 'UNKNOWN'} onClick={() => void reviewFact(f.id, { outcome: 'UNKNOWN' })}>? Unknown</button></>}</div>}
             </div>)}</div>
-            {selected && <button type="button" className="pd-btn is-primary is-block" onClick={() => setOpenDoc(selected.id)}>{canReview ? 'Review & verify fields' : 'View fields'}</button>}
+            {selected && <button type="button" className="pd-btn is-primary is-block" onClick={() => setOpenDoc(selected.id)}>{canReview ? 'Add a field / re-read text' : 'View fields'}</button>}
           </div>
         </div>
     <div className="pd-grid">

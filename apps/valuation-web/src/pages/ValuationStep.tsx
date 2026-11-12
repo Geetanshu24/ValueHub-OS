@@ -152,6 +152,9 @@ export default function ValuationStep() {
   }
 
   const stats = summary.data ?? []
+  const formatInfo = useFetch<{ format: string; formats: { id: string; label: string }[] }>(`/assignments/${id}/bank-report`)
+  const [reportFormat, setReportFormat] = useState('')
+  const pickedFormat = reportFormat || formatInfo.data?.format || ''
 
   if (assignment.error) return <div className="pd-shell"><ErrorText message={assignment.error} /><Link to="/assignments" className="pd-back">← Assignment Inbox</Link></div>
   if (!a || !cls) return <div className="pd-shell"><p className="pd-muted">Loading assignment…</p></div>
@@ -299,6 +302,10 @@ export default function ValuationStep() {
             <button type="button" className="va-toggle" onClick={() => setShowWorkings(!showWorkings)}>{showWorkings ? 'Hide' : 'Show'} line-by-line workings ({calc.result.lines.length} lines, {counted.length} counted)</button>
             {showWorkings && <LinesTable lines={calc.result.lines} />}
           </> : problems.length > 0 ? <div className="va-todo"><b>To complete ({problems.length})</b><ul>{problems.map((p) => <li key={p}>{p}</li>)}</ul></div> : <div className="pd-empty"><b>Nothing to calculate yet</b><p>Start with the area and rate.</p></div>}
+        
+          {calc && <div className="va-caveat"><label>Valuer’s mandatory report assumption / caveat<textarea rows={2} value={s.assumptions} onChange={(e) => setS({ ...s, assumptions: e.target.value })} placeholder="e.g. Value assumes clear title and vacant possession; area as measured on site." /></label>
+            <div className="va-caveat-actions"><button type="button" className="va-gold" disabled={busy || (list.length > 0 && s.changeReason.trim().length < 10)} onClick={() => void saveDraft()}>{busy ? 'Saving…' : list.length > 0 ? 'Save as new version' : 'Save draft'}</button>
+              {latest?.status === 'DRAFT' && canDraft && <button type="button" className="va-gold is-outline" disabled={busy} onClick={() => void move(latest.id, 'submit-for-review')}>Submit version {latest.versionNumber} for review →</button>}</div></div>}
         </section>}
 
         <section className="pd-card" aria-labelledby="va-ver-h">
@@ -320,7 +327,11 @@ export default function ValuationStep() {
         </section>
       </div>
 
-      <aside className="pd-aside"><ReadyCard title="Ready for quality review?" readiness={r} summary={!r ? '' : r.canProceed ? 'You can move to quality review.' : 'Send a valuation for review and clear any open differences.'}>
+      <aside className="pd-aside">
+        {(formatInfo.data?.formats.length ?? 0) > 0 && <section className="pd-card va-formats"><h3>Report format</h3><p>The bank’s own layout the report will be drawn in.</p>
+          {formatInfo.data?.formats.map((f) => <label key={f.id} className={pickedFormat === f.id ? 'is-on' : ''}><input type="radio" name="report-format" checked={pickedFormat === f.id} onChange={() => setReportFormat(f.id)} /> {f.label}</label>)}
+          <Link to={`/assignments/${id}/bank-report${pickedFormat ? `?format=${pickedFormat}` : ''}`} className="pd-btn is-ghost is-block">👁 Preview draft report</Link></section>}
+        <ReadyCard title="Ready for quality review?" readiness={r} summary={!r ? '' : r.canProceed ? 'You can move to quality review.' : 'Send a valuation for review and clear any open differences.'}>
         {editable && <button type="button" className="pd-btn is-primary is-block" disabled={busy || !calc || (list.length > 0 && s.changeReason.trim().length < 10)} onClick={() => void saveDraft()}>{busy ? 'Saving…' : list.length > 0 ? 'Save as new version' : 'Save draft'}</button>}
         {editable && !calc && <p className="pd-muted in-gap">{problems.length ? `${problems.length} thing${problems.length === 1 ? '' : 's'} left to complete in the workings.` : 'Complete the workings to save.'}</p>}
         {editable && calc && list.length > 0 && s.changeReason.trim().length < 10 && <p className="pd-muted in-gap">Say what changed (at least 10 characters) to save a new version.</p>}
