@@ -53,6 +53,8 @@ export default function Layout() {
   const [stage, setStage] = useState<Stage | null>(null)
   const [trail, setTrail] = useState(false)
   const isAdmin = user?.role === 'FIRM_ADMIN'
+  const role = user?.role
+  const deskWork = role !== 'INSPECTOR' && role !== 'ACCOUNTS'
   const current = life.data && life.data.case.id === caseId ? life.data : null
   const active = current?.stages.find((s) => s.n === current.active)
   const to = (step: string) => (caseId ? `/assignments/${caseId}/${step}` : '/assignments')
@@ -136,15 +138,25 @@ export default function Layout() {
 
               <Section>{current ? `Active Case (${current.case.code})` : 'Active Case'}</Section>
               <Item to={to('documents')} label="3. Document Vault" disabled={!caseId} badge={current && <span className="rounded bg-blue-500/20 px-1.5 font-mono text-[9px] text-blue-300">{current.counts.documents}</span>}><FileCheck2 className={icon} /></Item>
+{role !== 'ACCOUNTS' && <>
               <Item to={to('inspection')} label="4. Site Inspection" disabled={!caseId} badge={<span className="rounded bg-green-500/20 px-1.5 text-[9px] text-green-300">GPS</span>}><HardHat className={icon} /></Item>
+</>}
+{deskWork && <>
               <NavLink to={to('comparison')} className={({ isActive }) => `${nav} relative border border-amber-500/30 bg-white/5 ${isActive ? 'bg-white/20 font-bold text-white' : ''} ${caseId ? '' : 'pointer-events-none opacity-50'}`}>
                 <Scale className="h-4 w-4 shrink-0 text-brand-gold transition group-hover:text-white" />
                 <div className="sidebar-label flex flex-1 items-center justify-between"><span className="truncate font-semibold text-white">5. Comparison Engine</span>{current && current.counts.openDifferences > 0 && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{current.counts.openDifferences} Diff</span>}</div>
               </NavLink>
+</>}
+{deskWork && <>
               <Item to={to('valuation')} label="6. Draft Valuation" disabled={!caseId}><Calculator className={icon} /></Item>
               <Item to={to('review')} label="7. Valuer Sign-Off" disabled={!caseId} badge={<span className="rounded bg-amber-500/20 px-1.5 text-[9px] text-amber-300">IBBI</span>}><Stamp className={icon} /></Item>
+</>}
+{role !== 'INSPECTOR' && <>
               <Item to={to('submission')} label="8. Dispatch & Billing" disabled={!caseId}><Receipt className={icon} /></Item>
+</>}
+{deskWork && <>
               <Item to={to('bank-report')} label="Bank Report (Word / PDF)" disabled={!caseId}><Files className={icon} /></Item>
+</>}
 
               <Section>Market Intelligence</Section>
               <Item to={caseId ? `/rate-bank?assignment=${caseId}` : '/rate-bank'} label="9. Market Rate Bank"><Database className={icon} /></Item>
@@ -153,7 +165,7 @@ export default function Layout() {
               <Item to="/properties" label="Properties"><Building2 className={icon} /></Item>
               <Item to="/revisions" label="Bank Queries"><MessageSquareWarning className={icon} /></Item>
               <Item to="/evidence" label="Evidence Vault"><ShieldCheck className={icon} /></Item>
-              <Item to="/accounts" label="Accounts"><Wallet className={icon} /></Item>
+              {user?.role !== 'INSPECTOR' && <Item to="/accounts" label="Accounts"><Wallet className={icon} /></Item>}
               {isAdmin && <Item to="/reports" label="Report Templates"><Landmark className={icon} /></Item>}
               {isAdmin && <Item to="/admin" label="Administration"><Settings className={icon} /></Item>}
             </div>

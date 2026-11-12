@@ -96,6 +96,7 @@ function Bars({ monthly }: { monthly: Overview['monthly'] }) {
 export default function CommandCentre() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const canCreate = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER'
   const staff = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER' || user?.role === 'REVIEWER'
   const summary = useFetch<Summary>('/dashboard/summary').data
   const queue = useFetch<QueueItem[]>('/dashboard/work-queue').data ?? []
@@ -121,7 +122,7 @@ export default function CommandCentre() {
         <Pill dot="bg-purple-600" label="Drafts Awaiting Review" tone="border-purple-100 bg-purple-50 text-slate-900">{summary?.reports?.awaitingQc ?? '—'}</Pill>
         <div className="hidden h-4 w-px bg-slate-200 sm:block" />
         <Pill dot="bg-emerald-600" label="Fees Outstanding" tone="border-emerald-200 bg-emerald-50 text-emerald-800">{summary?.receivables ? `₹${formatInr(summary.receivables.outstanding)}` : '—'}</Pill>
-        <div className="ml-auto"><Link to="/assignments/new" className="flex items-center space-x-1.5 rounded-lg bg-brand-navy px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-navyDark"><Plus className="h-3.5 w-3.5" /><span>New Case</span></Link></div>
+        {canCreate && <div className="ml-auto"><Link to="/assignments/new" className="flex items-center space-x-1.5 rounded-lg bg-brand-navy px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-navyDark"><Plus className="h-3.5 w-3.5" /><span>New Case</span></Link></div>}
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-10">
