@@ -4,6 +4,8 @@ import { AuditService } from '../../common/audit/audit.service.js';
 import { StorageService } from '../../common/storage/storage.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { BankReportService } from './bank-report.service.js';
+import { checkReport } from './report-check.js';
 import { ReportPdfService } from './report-pdf.service.js';
 import { ReportSnapshotService, type Snapshot } from './report-snapshot.service.js';
 import type { QcResult } from './report-qc.js';
@@ -24,6 +26,8 @@ const reportSelect = {
   approvedAt: true,
   issuedAt: true,
   createdAt: true,
+  bankFormat: true,
+  docxKey: true,
   template: { select: { name: true, version: true } },
 } satisfies Prisma.ReportVersionSelect;
 
@@ -39,6 +43,7 @@ export class ReportsService {
     private readonly snapshots: ReportSnapshotService,
     private readonly pdf: ReportPdfService,
     private readonly audit: AuditService,
+    private readonly bank: BankReportService,
   ) {}
 
   list(firmId: string, assignmentId: string) {
@@ -61,7 +66,7 @@ export class ReportsService {
     await this.requireAssignment(firmId, assignmentId);
     const next = (await this.prisma.reportVersion.aggregate({ where: { assignmentId }, _max: { versionNumber: true } }))._max.versionNumber ?? 0;
     const { qc } = await this.snapshots.build(firmId, actor, assignmentId, dto.templateId, dto.valuationVersionId, next + 1);
-    return qc;
+    return dto.bankFormat ? await this.withBankChecks(firmId, assignmentId, dto.bankFormat, qc) : qc;
   }
 
   async create(firmId: string, actor: Actor, assignmentId: string, dto: CreateReportDto) {
@@ -73,9 +78,16 @@ export class ReportsService {
     const next = (await this.prisma.reportVersion.aggregate({ where: { assignmentId }, _max: { versionNumber: true } }))._max.versionNumber ?? 0;
     const everIssued = await this.prisma.reportVersion.count({ where: { assignmentId, firmId, issuedAt: { not: null } } });
     if (everIssued > 0 && !dto.changeReason) throw new BadRequestException('changeReason is required when revising an issued report');
-    const { snapshot, qc } = await this.snapshots.build(firmId, actor, assignmentId, dto.templateId, dto.valuationVersionId, next + 1);
-    const file = await this.pdf.render(snapshot, { status: 'DRAFT' });
+    const built = await this.snapshots.build(firmId, actor, assignmentId, dto.templateId, dto.valuationVersionId, next + 1);
+    const { snapshot } = built;
+    // In a bank's layout the report is the bank's own form, filled from the answers saved for it; the Word copy is kept too.
+    const qc = dto.bankFormat ? await this.withBankChecks(firmId, assignmentId, dto.bankFormat, built.qc) : built.qc;
+    const bankFiles = dto.bankFormat
+      ? { pdf: await this.bank.file(firmId, actor, assignmentId, 'pdf', dto.bankFormat), docx: await this.bank.file(firmId, actor, assignmentId, 'docx', dto.bankFormat) }
+      : null;
+    const file = bankFiles ? bankFiles.pdf.bytes : await this.pdf.render(snapshot, { status: 'DRAFT' });
     const stored = await this.storage.save(firmId, file);
+    const storedDocx = bankFiles ? await this.storage.save(firmId, bankFiles.docx.bytes) : null;
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -96,6 +108,7 @@ export class ReportsService {
             qc: qc as unknown as Prisma.InputJsonObject,
             storageKey: stored.storageKey,
             sha256: stored.sha256,
+            ...(dto.bankFormat && storedDocx && { bankFormat: dto.bankFormat, docxKey: storedDocx.storageKey, docxSha256: storedDocx.sha256 }),
             createdById: actor.userId,
             changeReason: dto.changeReason,
           },
@@ -109,8 +122,18 @@ export class ReportsService {
       });
     } catch (error) {
       await this.storage.remove(stored.storageKey);
+      if (storedDocx) await this.storage.remove(storedDocx.storageKey);
       throw error;
     }
+  }
+
+  // The bank's own checks (missing or inconsistent answers) join the report's checks as warnings: the valuer reads them, nothing blocks.
+  private async withBankChecks(firmId: string, assignmentId: string, format: string, qc: { passed: boolean; checks: { code: string; label: string; status: 'PASS' | 'FAIL' | 'WARN'; detail?: string }[] }) {
+    const ctx = await this.bank.merged(firmId, assignmentId, format);
+    const issues = checkReport({ fields: ctx.format.fields, values: ctx.values, documentFacts: ctx.documentFacts, realizableShare: ctx.format.id === 'SBI' ? 0.95 : 0.9 });
+    const extra = issues.slice(0, 12).map((issue, i) => ({ code: `bank.${format.toLowerCase()}.${i + 1}`, label: `${ctx.format.label}: ${issue.message}`, status: 'WARN' as const }));
+    if (extra.length === 0) extra.push({ code: `bank.${format.toLowerCase()}.ok`, label: `${ctx.format.label}: no missing or inconsistent answers found`, status: 'PASS' as never });
+    return { passed: qc.passed, checks: [...qc.checks, ...extra] };
   }
 
   async submitForReview(firmId: string, actorId: string, id: string) {
@@ -151,6 +174,18 @@ export class ReportsService {
     }
     if (changed.length > 0) throw new ConflictException(`Attached files no longer match their recorded hashes: ${changed.join(', ')}`);
 
+    if (report.bankFormat) {
+      const issuedAtBank = new Date();
+      const result = await this.prisma.$transaction(async (tx) => {
+        const { count } = await tx.reportVersion.updateMany({ where: { id, firmId, status: 'APPROVED' }, data: { status: 'ISSUED', issuedAt: issuedAtBank, issuedById: actor.userId } });
+        if (count !== 1) throw new ConflictException('Report changed concurrently; reload and retry');
+        await tx.reportVersion.updateMany({ where: { assignmentId: report.assignmentId, firmId, status: 'ISSUED', id: { not: id } }, data: { status: 'SUPERSEDED' } });
+        await this.audit.record({ firmId, actorId: actor.userId, entityType: 'ReportVersion', entityId: id, action: 'report.issued', metadata: { sha256: report.sha256, bankFormat: report.bankFormat } }, tx);
+        return tx.reportVersion.findUniqueOrThrow({ where: { id }, select: reportSelect });
+      });
+      return result;
+    }
+
     const approver = report.reviewerId ? await this.prisma.user.findUnique({ where: { id: report.reviewerId }, select: { fullName: true } }) : null;
     const issuedAt = new Date();
     const file = await this.pdf.render(snapshot, { status: 'ISSUED', approvedBy: approver?.fullName, issuedAt });
@@ -176,15 +211,17 @@ export class ReportsService {
     }
   }
 
-  async download(firmId: string, actorId: string, id: string): Promise<StreamableFile> {
+  async download(firmId: string, actorId: string, id: string, kind: 'pdf' | 'docx' = 'pdf'): Promise<StreamableFile> {
     const report = await this.prisma.reportVersion.findFirst({
       where: { id, firmId },
-      select: { storageKey: true, status: true, assignment: { select: { code: true } }, versionNumber: true },
+      select: { storageKey: true, docxKey: true, bankFormat: true, status: true, assignment: { select: { code: true } }, versionNumber: true },
     });
     if (!report) throw new NotFoundException('Report not found');
-    await this.audit.record({ firmId, actorId, entityType: 'ReportVersion', entityId: id, action: 'report.downloaded' });
-    const name = `${report.assignment.code}-R${report.versionNumber}${report.status === 'ISSUED' ? '' : '-DRAFT'}.pdf`;
-    return new StreamableFile(await this.storage.open(report.storageKey), { type: 'application/pdf', disposition: `attachment; filename="${name}"` });
+    if (kind === 'docx' && !report.docxKey) throw new NotFoundException('This report has no Word copy');
+    await this.audit.record({ firmId, actorId, entityType: 'ReportVersion', entityId: id, action: 'report.downloaded', metadata: { kind } });
+    const stem = `${report.assignment.code}-${report.bankFormat ?? 'R'}${report.bankFormat ? '-R' : ''}${report.versionNumber}${report.status === 'ISSUED' ? '' : '-DRAFT'}`.replaceAll('/', '-');
+    if (kind === 'docx') return new StreamableFile(await this.storage.open(report.docxKey as string), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', disposition: `attachment; filename="${stem}.docx"` });
+    return new StreamableFile(await this.storage.open(report.storageKey), { type: 'application/pdf', disposition: `attachment; filename="${stem}.pdf"` });
   }
 
   // Every active firm checklist item that applies to this property class must be ticked.

@@ -211,7 +211,7 @@ export class AssignmentsService {
       this.prisma.reportVersion.findFirst({
         where: { assignmentId: id, firmId, status: { not: 'SUPERSEDED' } },
         orderBy: { versionNumber: 'desc' },
-        select: { id: true, versionNumber: true, status: true, valuationVersionId: true, qc: true, createdById: true, approvedAt: true, issuedAt: true, createdAt: true, template: { select: { name: true, version: true } } },
+        select: { id: true, bankFormat: true, docxKey: true, versionNumber: true, status: true, valuationVersionId: true, qc: true, createdById: true, approvedAt: true, issuedAt: true, createdAt: true, template: { select: { name: true, version: true } } },
       }),
       this.prisma.discrepancy.count({ where: { assignmentId: id, firmId, material: true, status: { in: ['UNRESOLVED', 'ESCALATED'] } } }),
     ]);
@@ -247,7 +247,7 @@ export class AssignmentsService {
     if (!assignment) throw new NotFoundException('Assignment not found');
     const [valuation, report, submissions, openQueries, invoices] = await Promise.all([
       this.prisma.valuationVersion.findFirst({ where: { assignmentId: id, firmId, status: { not: 'SUPERSEDED' } }, orderBy: { versionNumber: 'desc' }, select: { id: true, versionNumber: true, status: true, totalValue: true, approvedAt: true, approvedById: true } }),
-      this.prisma.reportVersion.findFirst({ where: { assignmentId: id, firmId, status: { not: 'SUPERSEDED' } }, orderBy: { versionNumber: 'desc' }, select: { id: true, versionNumber: true, status: true, approvedAt: true, reviewerId: true, issuedAt: true, issuedById: true, sha256: true, valuationVersionId: true } }),
+      this.prisma.reportVersion.findFirst({ where: { assignmentId: id, firmId, status: { not: 'SUPERSEDED' } }, orderBy: { versionNumber: 'desc' }, select: { id: true, bankFormat: true, docxKey: true, versionNumber: true, status: true, approvedAt: true, reviewerId: true, issuedAt: true, issuedById: true, sha256: true, valuationVersionId: true } }),
       this.prisma.submission.findMany({ where: { assignmentId: id, firmId }, select: { deliveryStatus: true, acknowledgedAt: true } }),
       this.prisma.bankQuery.count({ where: { assignmentId: id, firmId, status: 'OPEN' } }),
       this.prisma.invoice.findMany({ where: { assignmentId: id, firmId, status: { not: 'CANCELLED' } }, select: { code: true, amount: true, status: true } }),

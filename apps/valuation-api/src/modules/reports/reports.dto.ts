@@ -8,6 +8,8 @@ export class CreateReportDto {
   @IsOptional() @IsUUID() valuationVersionId?: string;
   // Required when a report has already been issued for this assignment.
   @IsOptional() @IsString() @MinLength(10) @MaxLength(1000) changeReason?: string;
+  // Draw the report in a bank's own layout (the answers saved on the Bank Report page) instead of the template's own PDF.
+  @IsOptional() @IsIn(['BOI', 'PNB', 'SBI']) bankFormat?: 'BOI' | 'PNB' | 'SBI';
 }
 
 export class CreateTemplateDto {

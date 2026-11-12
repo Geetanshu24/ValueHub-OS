@@ -10,7 +10,7 @@ import { useFetch } from '../lib/useFetch.ts'
 interface Template { id: string; name: string; version: number; propertyClass: string | null; effectiveFrom: string }
 interface QcCheck { code: string; label: string; status: 'PASS' | 'FAIL' | 'WARN'; detail?: string }
 interface Qc { passed: boolean; checks: QcCheck[] }
-interface Report { id: string; versionNumber: number; status: string; qc: Qc; createdAt: string; issuedAt: string | null; approvedAt: string | null; valuationVersionId: string; template: { name: string; version: number } }
+interface Report { bankFormat?: string | null; docxKey?: string | null; id: string; versionNumber: number; status: string; qc: Qc; createdAt: string; issuedAt: string | null; approvedAt: string | null; valuationVersionId: string; template: { name: string; version: number } }
 interface Context {
   status: string
   valuation: { id: string; versionNumber: number; status: string; method: string; totalValue: string; adoptedAreaSqm: string; author: string | null; createdAt: string; approvedAt: string | null } | null
@@ -92,6 +92,10 @@ export default function QualityReview() {
   const report = reports.data?.find((r) => r.id === ctx?.report?.id) ?? null
   const checklist = useFetch<ChecklistEntry[]>(report ? `/reports/${report.id}/checklist` : null)
   const [templateId, setTemplateId] = useState('')
+  const formatInfo = useFetch<{ format: string; formats: { id: string; label: string }[] }>(`/assignments/${id}/bank-report`)
+  // The bank's own layout is the default: it is what the bank receives. 'GENERIC' keeps the template's own PDF.
+  const [layout, setLayout] = useState('')
+  const bankFormat = layout === 'GENERIC' ? '' : layout || formatInfo.data?.format || ''
   const [qc, setQc] = useState<Qc | null>(null)
   const [qcBusy, setQcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -111,16 +115,16 @@ export default function QualityReview() {
     if (!templateId || !canApprove || !reviewing) return
     let cancelled = false
     setQcBusy(true)
-    api.post<Qc>(`/assignments/${id}/reports/preview-qc`, { templateId }).then((r) => { if (!cancelled) { setQc(r); setError(null) } }).catch((c: unknown) => { if (!cancelled) { setQc(null); setError(errorMessage(c)) } }).finally(() => { if (!cancelled) setQcBusy(false) })
+    api.post<Qc>(`/assignments/${id}/reports/preview-qc`, { templateId, ...(bankFormat && { bankFormat }) }).then((r) => { if (!cancelled) { setQc(r); setError(null) } }).catch((c: unknown) => { if (!cancelled) { setQc(null); setError(errorMessage(c)) } }).finally(() => { if (!cancelled) setQcBusy(false) })
     return () => { cancelled = true }
-  }, [templateId, id, canApprove, reviewing, ctx?.valuation?.status, ctx?.valuation?.id])
+  }, [templateId, bankFormat, id, canApprove, reviewing, ctx?.valuation?.status, ctx?.valuation?.id])
 
   async function run(action: () => Promise<unknown>, ok?: string) {
     setError(null); setNotice(null); setBusy(true)
     try { await action(); if (ok) setNotice(ok); reloadAll() } catch (caught) { setError(errorMessage(caught)) } finally { setBusy(false) }
   }
   const approveValuation = () => ctx?.valuation && run(() => api.post(`/valuations/${ctx.valuation?.id}/approve`, {}), 'Valuation approved.')
-  const createReport = () => run(async () => { await api.post(`/assignments/${id}/reports`, { templateId, ...(everIssued && { changeReason }) }); setChangeReason(''); setShowPdf(true) }, 'Draft report created from the current valuation.')
+  const createReport = () => run(async () => { await api.post(`/assignments/${id}/reports`, { templateId, ...(bankFormat && { bankFormat }), ...(everIssued && { changeReason }) }); setChangeReason(''); setShowPdf(true) }, 'Draft report created from the current valuation.')
   const move = (action: 'submit-for-review' | 'approve') => report && run(() => api.post(`/reports/${report.id}/${action}`, {}), action === 'approve' ? 'Report approved.' : 'Report sent for review.')
   const tick = (itemId: string, checked: boolean) => report && run(() => api.put(`/reports/${report.id}/checklist/${itemId}`, { checked }))
   const installDefaults = () => run(() => api.post('/report-templates/install-defaults', {}), 'Standard templates installed.')
@@ -190,6 +194,8 @@ export default function QualityReview() {
         <section className="pd-card" aria-labelledby="qr-rep-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="qr-rep-h">Prepare the report</h2><p>The report is drawn from the approved records and frozen, then checked before anyone signs it off.</p></div></div></div>
           {templates.data && templates.data.length === 0 ? <div className="pd-empty"><b>No report template fits this assignment</b><p>A template sets the sections and annexures the bank expects.</p>{user?.role === 'FIRM_ADMIN' ? <button type="button" className="pd-btn is-primary" disabled={busy} onClick={() => void installDefaults()}>Install the standard templates</button> : <small>Ask a firm admin to install the standard templates.</small>}</div> : <>
+            {canPrepare && <div className="qr-layout"><b>Report layout</b><div role="group" aria-label="Report layout">{(formatInfo.data?.formats ?? []).map((f) => <button key={f.id} type="button" className={bankFormat === f.id ? 'is-on' : ''} onClick={() => { setLayout(f.id); setQc(null) }}>{f.label}</button>)}<button type="button" className={!bankFormat ? 'is-on' : ''} onClick={() => { setLayout('GENERIC'); setQc(null) }}>Standard template</button></div>
+              {bankFormat ? <small>The report is the bank’s own form, filled from the answers saved for it. <Link to={`/assignments/${id}/bank-report?format=${bankFormat}`}>Fill in or check the bank report →</Link></small> : <small>The firm’s own template PDF, not the bank’s form.</small>}</div>}
             {canPrepare && <div className="qr-prep"><label className="va-f">Template<select value={templateId} onChange={(e) => { setTemplateId(e.target.value); setQc(null) }}><option value="">Choose a template…</option>{templates.data?.map((t) => <option key={t.id} value={t.id}>{t.name} (v{t.version})</option>)}</select></label>
               {everIssued && <label className="va-f is-wide">Why a new report is needed<input minLength={10} value={changeReason} onChange={(e) => setChangeReason(e.target.value)} placeholder="Required because a report was already issued" /></label>}
               <button type="button" className="pd-btn is-primary" disabled={!templateId || busy || !reviewing || (everIssued && changeReason.trim().length < 10)} onClick={() => void createReport()}>{report && !stale ? 'Prepare again' : 'Create draft report'}</button></div>}
@@ -199,7 +205,7 @@ export default function QualityReview() {
 
         {report && <section className="pd-card" aria-labelledby="qr-cur-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">C</span><div><h2 id="qr-cur-h">Report R{report.versionNumber}</h2><p>{report.template.name} v{report.template.version} · prepared by {rep?.author ?? 'unknown'} on {new Date(report.createdAt).toLocaleDateString('en-IN')}</p></div></div>
-            <div className="qr-actions"><button type="button" className="pd-btn is-ghost" onClick={() => setShowPdf(!showPdf)}>{showPdf ? 'Hide preview' : 'Preview PDF'}</button><button type="button" className="pd-btn is-ghost" onClick={() => void openFile(`/reports/${report.id}/file`).catch((c: unknown) => setError(errorMessage(c)))}>Open ↗</button></div></div>
+            <div className="qr-actions">{report.bankFormat && <span className="pd-pill is-type">{report.bankFormat} layout</span>}<button type="button" className="pd-btn is-ghost" onClick={() => setShowPdf(!showPdf)}>{showPdf ? 'Hide preview' : 'Preview PDF'}</button>{report.docxKey && <button type="button" className="pd-btn is-ghost" onClick={() => void openFile(`/reports/${report.id}/file?kind=docx`).catch((c: unknown) => setError(errorMessage(c)))}>Word (.docx)</button>}<button type="button" className="pd-btn is-ghost" onClick={() => void openFile(`/reports/${report.id}/file`).catch((c: unknown) => setError(errorMessage(c)))}>Open ↗</button></div></div>
           {stale && <p className="pd-flag">This report was built from an older valuation. Prepare a new one above.</p>}
           <ol className="in-timeline">{FLOW.map(([key, label], i) => <li key={key} className={i < flowIndex ? 'is-done' : i === flowIndex ? 'is-now' : ''}><span>{i < flowIndex ? '✓' : i + 1}</span>{label}</li>)}</ol>
           {showPdf && <ReportPreview reportId={report.id} />}

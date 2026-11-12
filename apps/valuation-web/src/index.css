@@ -627,3 +627,7 @@ a.sn-step:hover { background:#fff; }.sn-step.is-here { background:#fff; box-shad
 .in-ai-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid #ede9fe}.in-ai-row small{display:block;color:#64748b}
 .in-ai-bar{display:flex;gap:8px;align-items:center;margin:8px 0}
 .vault-conf{font-style:normal;font:600 10px ui-monospace,monospace;color:#64748b;background:#f1f5f9;border-radius:4px;padding:1px 5px;margin-right:6px}
+
+.qr-layout{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.qr-layout b{font-size:12px}.qr-layout small{font-size:11px;color:#64748b}
+.qr-layout>div{display:flex;gap:6px;flex-wrap:wrap}.qr-layout button{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:#334155}
+.qr-layout button.is-on{border:2px solid var(--color-brand-navy);background:rgba(219,234,254,.5);font-weight:700;color:var(--color-brand-navy)}

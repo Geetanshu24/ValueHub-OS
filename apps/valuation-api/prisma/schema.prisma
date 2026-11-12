@@ -618,6 +618,10 @@ model ReportVersion {
   qc                 Json
   storageKey         String // current PDF: draft, then the final issued copy
   sha256             String
+  // Set when the report is the bank's own layout (BOI, PNB, SBI): the Word copy is kept beside the PDF.
+  bankFormat         String?
+  docxKey            String?
+  docxSha256         String?
   createdById        String
   changeReason       String? // required when a version follows an issued one
   reviewerId         String?

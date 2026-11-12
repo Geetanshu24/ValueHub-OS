@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, StreamableFile } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import { CreateReportDto, CreateTemplateDto, SetTemplateActiveDto } from './reports.dto.js';
@@ -77,8 +77,8 @@ export class ReportsController {
   }
 
   @Get('reports/:id/file')
-  file(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<StreamableFile> {
-    return this.reports.download(user.firmId, user.userId, id);
+  file(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Query('kind') kind?: string): Promise<StreamableFile> {
+    return this.reports.download(user.firmId, user.userId, id, kind === 'docx' ? 'docx' : 'pdf');
   }
 
   @Roles('FIRM_ADMIN', 'VALUER')
