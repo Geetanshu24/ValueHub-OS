@@ -213,9 +213,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  firm                Firm         @relation(fields: [firmId], references: [id])
-  assignmentsAsValuer Assignment[] @relation("AssignmentValuer")
-  inspections         Inspection[] @relation("InspectionInspector")
+  firm                          Firm         @relation(fields: [firmId], references: [id])
+  assignmentsAsValuer           Assignment[] @relation("AssignmentValuer")
+  assignmentsAsPlannedInspector Assignment[] @relation("AssignmentPlannedInspector")
+  inspections                   Inspection[] @relation("InspectionInspector")
 
   @@index([firmId])
 }
@@ -303,54 +304,66 @@ model Property {
 // ───────────────────────── Assignment ─────────────────────────
 
 model Assignment {
-  id               String             @id @default(uuid())
-  firmId           String
-  code             String // VH-ASG-2026-00921
-  bankId           String
-  branchId         String?
-  propertyId       String
-  purpose          String
-  scope            String?
-  valuationDate    DateTime           @db.Date
-  dueDate          DateTime           @db.Date
-  receivedAt       DateTime           @default(now())
-  intakeSource     IntakeSource       @default(DASHBOARD)
-  priority         AssignmentPriority @default(NORMAL)
-  borrowerName     String?
-  instructionDate  DateTime?          @db.Date
+  id                  String             @id @default(uuid())
+  firmId              String
+  code                String // VH-ASG-2026-00921
+  bankId              String
+  branchId            String?
+  propertyId          String
+  purpose             String
+  scope               String?
+  valuationDate       DateTime           @db.Date
+  dueDate             DateTime           @db.Date
+  receivedAt          DateTime           @default(now())
+  intakeSource        IntakeSource       @default(DASHBOARD)
+  priority            AssignmentPriority @default(NORMAL)
+  borrowerName        String?
+  instructionDate     DateTime?          @db.Date
   // The earlier assignment this one was started from. Nothing is copied
   // silently; the link only records where the starting details came from.
-  reusedFromId     String?
-  fee              Decimal?           @db.Decimal(12, 2)
-  status           AssignmentStatus   @default(INTAKE)
-  assignedValuerId String
-  createdById      String
-  closedAt         DateTime?
-  retainUntil      DateTime?          @db.Date
-  legalHold        Boolean            @default(false)
-  legalHoldReason  String?
-  legalHoldAt      DateTime?
-  legalHoldById    String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  reusedFromId        String?
+  // Intake details from the bank's instruction and the booking call.
+  bankOfficerName     String?
+  bankOfficerMobile   String?
+  loanAccountNo       String?
+  applicantFatherName String?
+  applicantMobile     String?
+  applicantEmail      String?
+  billingArrangement  String?
+  specialInstructions String?
+  approxAreaSqm       Decimal?           @db.Decimal(14, 2)
+  plannedInspectorId  String?
+  fee                 Decimal?           @db.Decimal(12, 2)
+  status              AssignmentStatus   @default(INTAKE)
+  assignedValuerId    String
+  createdById         String
+  closedAt            DateTime?
+  retainUntil         DateTime?          @db.Date
+  legalHold           Boolean            @default(false)
+  legalHoldReason     String?
+  legalHoldAt         DateTime?
+  legalHoldById       String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
-  firm           Firm               @relation(fields: [firmId], references: [id])
-  bank           Bank               @relation(fields: [bankId], references: [id])
-  branch         BankBranch?        @relation(fields: [branchId], references: [id])
-  property       Property           @relation(fields: [propertyId], references: [id])
-  assignedValuer User               @relation("AssignmentValuer", fields: [assignedValuerId], references: [id])
-  reusedFrom     Assignment?        @relation("AssignmentReuse", fields: [reusedFromId], references: [id])
-  reusedBy       Assignment[]       @relation("AssignmentReuse")
-  documents      Document[]
-  inspections    Inspection[]
-  discrepancies  Discrepancy[]
-  comparables    MarketComparable[]
-  valuations     ValuationVersion[]
-  reports        ReportVersion[]
-  bankReportForms BankReportForm[]
-  submissions    Submission[]
-  invoices       Invoice[]
-  queries        BankQuery[]
+  firm             Firm               @relation(fields: [firmId], references: [id])
+  bank             Bank               @relation(fields: [bankId], references: [id])
+  branch           BankBranch?        @relation(fields: [branchId], references: [id])
+  property         Property           @relation(fields: [propertyId], references: [id])
+  plannedInspector User?              @relation("AssignmentPlannedInspector", fields: [plannedInspectorId], references: [id])
+  assignedValuer   User               @relation("AssignmentValuer", fields: [assignedValuerId], references: [id])
+  reusedFrom       Assignment?        @relation("AssignmentReuse", fields: [reusedFromId], references: [id])
+  reusedBy         Assignment[]       @relation("AssignmentReuse")
+  documents        Document[]
+  inspections      Inspection[]
+  discrepancies    Discrepancy[]
+  comparables      MarketComparable[]
+  valuations       ValuationVersion[]
+  reports          ReportVersion[]
+  bankReportForms  BankReportForm[]
+  submissions      Submission[]
+  invoices         Invoice[]
+  queries          BankQuery[]
 
   @@unique([firmId, code])
   @@index([firmId, status])

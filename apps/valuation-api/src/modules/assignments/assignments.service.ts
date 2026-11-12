@@ -20,6 +20,16 @@ const assignmentSelect = {
   code: true,
   purpose: true,
   scope: true,
+  bankOfficerName: true,
+  bankOfficerMobile: true,
+  loanAccountNo: true,
+  applicantFatherName: true,
+  applicantMobile: true,
+  applicantEmail: true,
+  billingArrangement: true,
+  specialInstructions: true,
+  approxAreaSqm: true,
+  plannedInspector: { select: { id: true, fullName: true } },
   valuationDate: true,
   dueDate: true,
   receivedAt: true,
@@ -293,6 +303,10 @@ export class AssignmentsService {
     if (!branch) throw new BadRequestException('Branch does not belong to this bank');
     if (!property) throw new BadRequestException('Unknown property');
     if (!valuer) throw new BadRequestException('Assigned valuer must be an active valuer in this firm');
+    if (dto.plannedInspectorId) {
+      const inspector = await this.prisma.user.findFirst({ where: { id: dto.plannedInspectorId, firmId, isActive: true, role: { in: ['FIRM_ADMIN', 'VALUER', 'INSPECTOR'] } }, select: { id: true } });
+      if (!inspector) throw new BadRequestException('Planned inspector must be an active inspector or valuer in this firm');
+    }
     if (dto.reusedFromId) {
       const earlier = await this.prisma.assignment.findFirst({ where: { id: dto.reusedFromId, firmId }, select: { propertyId: true } });
       if (!earlier) throw new BadRequestException('Unknown assignment to reuse');
@@ -321,6 +335,16 @@ export class AssignmentsService {
           borrowerName: dto.borrowerName?.trim() || undefined,
           instructionDate: dto.instructionDate ? new Date(dto.instructionDate) : undefined,
           reusedFromId: dto.reusedFromId,
+          bankOfficerName: dto.bankOfficerName?.trim() || undefined,
+          bankOfficerMobile: dto.bankOfficerMobile?.trim() || undefined,
+          loanAccountNo: dto.loanAccountNo?.trim() || undefined,
+          applicantFatherName: dto.applicantFatherName?.trim() || undefined,
+          applicantMobile: dto.applicantMobile?.trim() || undefined,
+          applicantEmail: dto.applicantEmail?.trim() || undefined,
+          billingArrangement: dto.billingArrangement?.trim() || undefined,
+          specialInstructions: dto.specialInstructions?.trim() || undefined,
+          approxAreaSqm: dto.approxAreaSqm,
+          plannedInspectorId: dto.plannedInspectorId,
           fee,
         },
         select: assignmentSelect,

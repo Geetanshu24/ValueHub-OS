@@ -535,3 +535,15 @@ a.sn-step:hover { background:#fff; }.sn-step.is-here { background:#fff; box-shad
 /* New Case slide-over: the intake wizard without its own page chrome */
 .slide-intake .intake-topline{display:none}
 .slide-intake .intake-shell{max-width:none;padding:16px}
+
+/* New case wizard additions */
+.intake-scope{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}.intake-scope label{display:flex;gap:6px;align-items:center}
+.intake-area{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.intake-gps{display:grid;grid-template-columns:1.5fr 1fr 1fr auto;gap:8px;align-items:center;margin-top:12px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+.intake-gps small{display:block;font-size:11px;color:#64748b}
+@media (max-width:800px){.intake-gps,.intake-scope{grid-template-columns:1fr}}
+.intake-confirm{padding:16px}.intake-confirm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.intake-confirm-head em{font-style:normal;font-size:10px;font-weight:700;background:#ecfdf5;color:#047857;padding:2px 8px;border-radius:4px}
+.intake-confirm dl{display:grid;grid-template-columns:1fr 1fr;gap:12px}.intake-confirm dl .is-wide{grid-column:1/-1}
+.intake-confirm dt{font-size:10px;color:#94a3b8}.intake-confirm dd{margin:0;font-size:13px;font-weight:600;color:#0f172a}
+.intake-governance{margin-top:14px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:12px}.intake-governance b{color:#92400e}.intake-governance p{margin:4px 0 0;color:#78350f}

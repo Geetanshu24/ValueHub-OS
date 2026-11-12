@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
+  IsEmail,
   IsIn,
   IsNumber,
   IsOptional,
@@ -45,6 +46,18 @@ export class CreateAssignmentDto {
   @IsOptional() @IsIn(ASSIGNMENT_PRIORITIES) priority?: AssignmentPriority;
   @IsOptional() @IsString() @MaxLength(200) borrowerName?: string;
   @IsOptional() @IsDateString({ strict: true }) instructionDate?: string;
+
+  // Intake details: who at the bank, the loan, the applicant and how the fee is settled.
+  @IsOptional() @IsString() @MaxLength(120) bankOfficerName?: string;
+  @IsOptional() @IsString() @MaxLength(40) bankOfficerMobile?: string;
+  @IsOptional() @IsString() @MaxLength(80) loanAccountNo?: string;
+  @IsOptional() @IsString() @MaxLength(120) applicantFatherName?: string;
+  @IsOptional() @IsString() @MaxLength(40) applicantMobile?: string;
+  @IsOptional() @IsEmail() @MaxLength(200) applicantEmail?: string;
+  @IsOptional() @IsString() @MaxLength(120) billingArrangement?: string;
+  @IsOptional() @IsString() @MaxLength(1000) specialInstructions?: string;
+  @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(100_000_000_000) approxAreaSqm?: number;
+  @IsOptional() @IsUUID() plannedInspectorId?: string;
 
   // The earlier assignment these details were started from (same property).
   @IsOptional() @IsUUID() reusedFromId?: string;
