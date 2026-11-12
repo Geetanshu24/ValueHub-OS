@@ -161,6 +161,7 @@ export default function SubmissionStep() {
           {rep?.status === 'APPROVED' && !canAct && <p className="pd-muted">Only a valuer or admin can issue the report.</p>}
         </section>
 
+        <div className="sb-duo">
         <section className="pd-card" aria-labelledby="sb-send-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="sb-send-h">Multi-channel report dispatch</h2><p>“Sent” means the mail server accepted it. The bank’s acknowledgement is recorded by you, never assumed.</p></div></div></div>
           {issued && canAct && stage !== 'CLOSED' && <form onSubmit={submit} className="sb-send">
@@ -178,6 +179,21 @@ export default function SubmissionStep() {
             <td>{s.acknowledgedAt ? <span className="pd-pill is-verified">Acknowledged {formatDate(s.acknowledgedAt)}</span> : s.deliveryStatus !== 'FAILED' && canAct ? (ack?.id === s.id ? null : <button type="button" className="pd-btn is-ghost" onClick={() => setAck({ id: s.id, date: today(), note: '' })}>Record acknowledgement</button>) : '—'}</td></tr>
             {ack?.id === s.id && <tr><td colSpan={5}><form className="in-inline-form sb-ack" onSubmit={acknowledge}><label>Acknowledged on<input type="date" required max={today()} value={ack.date} onChange={(e) => setAck({ ...ack, date: e.target.value })} /></label><label>Note<input value={ack.note} onChange={(e) => setAck({ ...ack, note: e.target.value })} placeholder="Who confirmed, how" /></label><div><button type="button" className="pd-btn is-ghost" onClick={() => setAck(null)}>Cancel</button><button className="pd-btn is-primary" disabled={busy}>Save</button></div></form></td></tr>}</Fragment>)}</tbody></table></div></div>}
         </section>
+
+        <section className="pd-card" aria-labelledby="sb-close-h">
+          <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="sb-close-h">Professional tax invoice &amp; close</h2><p>Raise the fee, then close the assignment once the bank has what it needs.</p></div></div><Link to="/accounts" className="pd-btn is-ghost">Open Accounts ↗</Link></div>
+          {(invoiceList.data?.items.length ?? 0) > 0 ? invoiceList.data?.items.map((inv) => <InvoiceCard key={inv.id} defaultPreview={invoiceList.data?.items[0]?.id === inv.id} invoice={inv} canBill={canBill} isAdmin={user?.role === 'FIRM_ADMIN'} onChange={reloadAll} showAssignment={false} />) : <p className="pd-muted">No invoice raised for this assignment yet.</p>}
+          {canBill && ['SUBMITTED', 'CLOSED'].includes(stage) && <RaiseInvoice assignmentId={id} fee={a.fee ?? null} invoiced={(invoiceList.data?.items ?? []).filter((i) => i.status !== 'CANCELLED').reduce((t, i) => t + Number(i.amount), 0)} onDone={reloadAll} />}
+          {!canBill && <p className="pd-muted">Invoices are raised by the firm admin or accounts. {a.fee ? `Agreed fee ₹ ${formatInr(a.fee)}.` : 'No fee is recorded on this assignment.'}</p>}
+          {canBill && !['SUBMITTED', 'CLOSED'].includes(stage) && <p className="pd-muted">An invoice can be raised once the report has been submitted to the bank.</p>}
+          {stage === 'SUBMITTED' && <>
+            {ctx && ctx.closeProblems.length > 0 ? <div className="va-todo"><b>Before closing ({ctx.closeProblems.length})</b><ul>{ctx.closeProblems.map((p) => <li key={p}>{p}</li>)}</ul></div> : <p className="pd-notice">Everything needed for the archive is on record.</p>}
+            {canAct && (confirmClose ? <div className="pd-confirm"><b>Close this assignment?</b><p>It becomes read-only and its retention period starts. A closed assignment cannot be reopened, so settle any revision requests first.</p><div><button type="button" className="pd-btn is-ghost" onClick={() => setConfirmClose(false)}>Not yet</button><button type="button" className="pd-btn is-primary" disabled={busy} onClick={() => void closeAssignment()}>{busy ? 'Closing…' : 'Close assignment'}</button></div></div>
+              : <div className="qr-actions"><button type="button" className="pd-btn is-primary" disabled={!ctx || ctx.closeProblems.length > 0 || busy} onClick={() => setConfirmClose(true)}>Close assignment…</button></div>)}
+          </>}
+        </section>
+
+        </div>
 
         <section className="pd-card" aria-labelledby="sb-q-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">C</span><div><h2 id="sb-q-h">Bank queries &amp; revisions</h2><p>Record what the bank asks, answer with evidence, and close it. A revision request reopens the assignment.</p></div></div>{canAsk && !asking && stage !== 'CANCELLED' && <button type="button" className="pd-btn is-primary" onClick={() => setAsking(true)}>＋ Record a query</button>}</div>
@@ -211,19 +227,6 @@ export default function SubmissionStep() {
               <div className="va-grid"><F label={ctx?.emailEnabled ? 'Also email the response to (optional)' : 'Email is not set up on this server'} wide><input type="email" disabled={!ctx?.emailEnabled} value={replying.sendTo} onChange={(e) => setReplying({ ...replying, sendTo: e.target.value })} /></F></div>
               <div className="va-actions"><button type="button" className="pd-btn is-ghost" onClick={() => setReplying(null)}>Cancel</button><button className="pd-btn is-primary" disabled={busy}>Record response</button></div></form>}
           </article>)}</div>}
-        </section>
-
-        <section className="pd-card" aria-labelledby="sb-close-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="sb-close-h">Professional tax invoice &amp; close</h2><p>Raise the fee, then close the assignment once the bank has what it needs.</p></div></div><Link to="/accounts" className="pd-btn is-ghost">Open Accounts ↗</Link></div>
-          {(invoiceList.data?.items.length ?? 0) > 0 ? invoiceList.data?.items.map((inv) => <InvoiceCard key={inv.id} invoice={inv} canBill={canBill} isAdmin={user?.role === 'FIRM_ADMIN'} onChange={reloadAll} showAssignment={false} />) : <p className="pd-muted">No invoice raised for this assignment yet.</p>}
-          {canBill && ['SUBMITTED', 'CLOSED'].includes(stage) && <RaiseInvoice assignmentId={id} fee={a.fee ?? null} invoiced={(invoiceList.data?.items ?? []).filter((i) => i.status !== 'CANCELLED').reduce((t, i) => t + Number(i.amount), 0)} onDone={reloadAll} />}
-          {!canBill && <p className="pd-muted">Invoices are raised by the firm admin or accounts. {a.fee ? `Agreed fee ₹ ${formatInr(a.fee)}.` : 'No fee is recorded on this assignment.'}</p>}
-          {canBill && !['SUBMITTED', 'CLOSED'].includes(stage) && <p className="pd-muted">An invoice can be raised once the report has been submitted to the bank.</p>}
-          {stage === 'SUBMITTED' && <>
-            {ctx && ctx.closeProblems.length > 0 ? <div className="va-todo"><b>Before closing ({ctx.closeProblems.length})</b><ul>{ctx.closeProblems.map((p) => <li key={p}>{p}</li>)}</ul></div> : <p className="pd-notice">Everything needed for the archive is on record.</p>}
-            {canAct && (confirmClose ? <div className="pd-confirm"><b>Close this assignment?</b><p>It becomes read-only and its retention period starts. A closed assignment cannot be reopened, so settle any revision requests first.</p><div><button type="button" className="pd-btn is-ghost" onClick={() => setConfirmClose(false)}>Not yet</button><button type="button" className="pd-btn is-primary" disabled={busy} onClick={() => void closeAssignment()}>{busy ? 'Closing…' : 'Close assignment'}</button></div></div>
-              : <div className="qr-actions"><button type="button" className="pd-btn is-primary" disabled={!ctx || ctx.closeProblems.length > 0 || busy} onClick={() => setConfirmClose(true)}>Close assignment…</button></div>)}
-          </>}
         </section>
 
         {canBill && <AgingTracker />}

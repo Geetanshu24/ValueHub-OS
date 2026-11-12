@@ -154,6 +154,14 @@ export default function ValuationStep() {
   const stats = summary.data ?? []
   const formatInfo = useFetch<{ format: string; formats: { id: string; label: string }[] }>(`/assignments/${id}/bank-report`)
   const [reportFormat, setReportFormat] = useState('')
+  const aiStatus = useFetch<{ enabled: boolean }>('/ai/status')
+  const [aiText, setAiText] = useState<{ assumptions: string; needsInput: string[] } | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  async function suggestAssumptions() {
+    setAiBusy(true); setAiError(null)
+    try { setAiText(await api.post<{ assumptions: string; needsInput: string[] }>(`/assignments/${id}/assumptions/ai`, {})) } catch (caught) { setAiError(errorMessage(caught)) } finally { setAiBusy(false) }
+  }
   const pickedFormat = reportFormat || formatInfo.data?.format || ''
 
   if (assignment.error) return <div className="pd-shell"><ErrorText message={assignment.error} /><Link to="/assignments" className="pd-back">← Assignment Inbox</Link></div>
@@ -303,7 +311,9 @@ export default function ValuationStep() {
             {showWorkings && <LinesTable lines={calc.result.lines} />}
           </> : problems.length > 0 ? <div className="va-todo"><b>To complete ({problems.length})</b><ul>{problems.map((p) => <li key={p}>{p}</li>)}</ul></div> : <div className="pd-empty"><b>Nothing to calculate yet</b><p>Start with the area and rate.</p></div>}
         
-          {calc && <div className="va-caveat"><label>Valuer’s mandatory report assumption / caveat<textarea rows={2} value={s.assumptions} onChange={(e) => setS({ ...s, assumptions: e.target.value })} placeholder="e.g. Value assumes clear title and vacant possession; area as measured on site." /></label>
+          {calc && <div className="va-caveat">{canDraft && aiStatus.data?.enabled && <div className="va-ai"><button type="button" disabled={aiBusy} onClick={() => void suggestAssumptions()}>{aiBusy ? '✨ AI is drafting…' : '✨ Suggest with AI'}</button>{aiError && <small>{aiError}</small>}</div>}
+            {aiText && <div className="va-ai-box"><b>✨ AI suggestion (check it, then use or ignore)</b><p>{aiText.assumptions}</p>{aiText.needsInput.length > 0 && <small>Missing: {aiText.needsInput.join('; ')}</small>}<div><button type="button" onClick={() => { setS({ ...s, assumptions: aiText.assumptions }); setAiText(null) }}>Use this</button><button type="button" onClick={() => setAiText(null)}>Ignore</button></div></div>}
+            <label>Valuer’s mandatory report assumption / caveat<textarea rows={2} value={s.assumptions} onChange={(e) => setS({ ...s, assumptions: e.target.value })} placeholder="e.g. Value assumes clear title and vacant possession; area as measured on site." /></label>
             <div className="va-caveat-actions"><button type="button" className="va-gold" disabled={busy || (list.length > 0 && s.changeReason.trim().length < 10)} onClick={() => void saveDraft()}>{busy ? 'Saving…' : list.length > 0 ? 'Save as new version' : 'Save draft'}</button>
               {latest?.status === 'DRAFT' && canDraft && <button type="button" className="va-gold is-outline" disabled={busy} onClick={() => void move(latest.id, 'submit-for-review')}>Submit version {latest.versionNumber} for review →</button>}</div></div>}
         </section>}
@@ -328,9 +338,6 @@ export default function ValuationStep() {
       </div>
 
       <aside className="pd-aside">
-        {(formatInfo.data?.formats.length ?? 0) > 0 && <section className="pd-card va-formats"><h3>Report format</h3><p>The bank’s own layout the report will be drawn in.</p>
-          {formatInfo.data?.formats.map((f) => <label key={f.id} className={pickedFormat === f.id ? 'is-on' : ''}><input type="radio" name="report-format" checked={pickedFormat === f.id} onChange={() => setReportFormat(f.id)} /> {f.label}</label>)}
-          <Link to={`/assignments/${id}/bank-report${pickedFormat ? `?format=${pickedFormat}` : ''}`} className="pd-btn is-ghost is-block">👁 Preview draft report</Link></section>}
         <ReadyCard title="Ready for quality review?" readiness={r} summary={!r ? '' : r.canProceed ? 'You can move to quality review.' : 'Send a valuation for review and clear any open differences.'}>
         {editable && <button type="button" className="pd-btn is-primary is-block" disabled={busy || !calc || (list.length > 0 && s.changeReason.trim().length < 10)} onClick={() => void saveDraft()}>{busy ? 'Saving…' : list.length > 0 ? 'Save as new version' : 'Save draft'}</button>}
         {editable && !calc && <p className="pd-muted in-gap">{problems.length ? `${problems.length} thing${problems.length === 1 ? '' : 's'} left to complete in the workings.` : 'Complete the workings to save.'}</p>}
@@ -339,7 +346,11 @@ export default function ValuationStep() {
         {a.status === 'VALUATION' || a.status === 'REVISION' ? (canDraft ? <button type="button" className="pd-btn is-primary is-block in-gap" disabled={!r?.canProceed || busy} onClick={() => void advance()}>Continue to Quality Review →</button> : <p className="pd-muted in-gap">Only a valuer or admin can move this assignment forward.</p>)
           : stepNow > 3 ? <div className="pd-moved in-gap"><b>Already in {ASSIGNMENT_STATUS_LABELS[a.status]}</b><Link to={stepPath(Math.min(stepNow, 5), a.id)} className="pd-btn is-primary">Open next step →</Link></div> : null}
         <Link to={stepPath(2, a.id)} className="pd-save-exit">← Back to Site Inspection</Link>
-      </ReadyCard></aside>
+      </ReadyCard>
+        {(formatInfo.data?.formats.length ?? 0) > 0 && <section className="pd-card va-formats"><h3>Report format</h3><p>The bank’s own layout the report will be drawn in.</p>
+          {formatInfo.data?.formats.map((f) => <label key={f.id} className={pickedFormat === f.id ? 'is-on' : ''}><input type="radio" name="report-format" checked={pickedFormat === f.id} onChange={() => setReportFormat(f.id)} /> {f.label}</label>)}
+          <Link to={`/assignments/${id}/bank-report${pickedFormat ? `?format=${pickedFormat}` : ''}`} className="pd-btn is-ghost is-block">👁 Preview draft report</Link></section>}
+      </aside>
     </div>
   </div>
 }

@@ -31,7 +31,7 @@ function Cell({ evidence, empty, tone }: { evidence: Evidence | null; empty: str
     : <div className="italic text-slate-400">{empty}</div>
 }
 
-function ResolvePanel({ row, id, canEdit, onDone }: { row: Row; id: string; canEdit: boolean; onDone: () => void }) {
+function ResolvePanel({ row, id, canEdit, onDone, help }: { row: Row; id: string; canEdit: boolean; onDone: () => void; help?: { explanation: string; suggestedNote: string } }) {
   const toast = useToast()
   const current = row.discrepancy
   const [treatment, setTreatment] = useState(row.treatments.find((t) => t.key === current?.treatment)?.key ?? row.treatments[0]?.key ?? '')
@@ -64,6 +64,11 @@ function ResolvePanel({ row, id, canEdit, onDone }: { row: Row; id: string; canE
               </label>
             ))}
           </div>
+          {help && <div className="rounded border border-violet-200 bg-violet-50 p-2 text-[11px] text-slate-700">
+            <b className="text-violet-800">✨ AI suggestion (check it yourself)</b>
+            <p className="mt-1">{help.explanation}</p>
+            {canEdit && help.suggestedNote && <div className="mt-1.5 flex items-start justify-between gap-2"><em className="text-slate-600">“{help.suggestedNote}”</em><button type="button" className="shrink-0 rounded border border-violet-300 bg-white px-2 py-0.5 font-semibold text-violet-800 hover:bg-violet-100" onClick={() => setNote(help.suggestedNote)}>Use as note</button></div>}
+          </div>}
           <div>
             <label className="mb-1 block font-semibold text-slate-700">Valuer's Formal Disclosure Note *</label>
             <textarea rows={3} value={note} disabled={!canEdit} onChange={(e) => setNote(e.target.value)} className="w-full rounded border border-slate-300 bg-slate-50 p-2 text-xs focus:bg-white" />
@@ -86,6 +91,19 @@ export default function ComparisonPage() {
   const canEdit = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER' || user?.role === 'REVIEWER'
   const data = useFetch<Comparison>(`/assignments/${id}/comparison`)
   const [openKey, setOpenKey] = useState<string | null>(null)
+  const aiStatus = useFetch<{ enabled: boolean }>('/ai/status')
+  const [help, setHelp] = useState<Record<string, { explanation: string; suggestedNote: string }>>({})
+  const [helpBusy, setHelpBusy] = useState(false)
+  const [helpError, setHelpError] = useState<string | null>(null)
+  const askAi = async () => {
+    setHelpBusy(true); setHelpError(null)
+    try {
+      const result = await api.post<{ rows: { key: string; explanation: string; suggestedNote: string }[] }>(`/assignments/${id}/comparison/ai-explain`, {})
+      setHelp(Object.fromEntries(result.rows.map((row) => [row.key, row])))
+      const first = result.rows[0]?.key
+      if (first) setOpenKey(first)
+    } catch (caught) { setHelpError(errorMessage(caught)) } finally { setHelpBusy(false) }
+  }
 
   if (data.error && !data.data) return <ErrorText message={data.error} />
   if (!data.data) return <p className="text-xs text-slate-500">Loading…</p>
@@ -104,6 +122,7 @@ export default function ComparisonPage() {
             <div><h2 className="text-sm font-bold tracking-tight">⚖️ Document vs Site Evidence Comparison Engine</h2><p className="text-xs text-slate-300">{d.inspection ? `Site layer: inspection on ${new Date(d.inspection.visitedAt).toLocaleDateString('en-IN')} by ${d.inspection.by}` : 'No inspection recorded yet'} · Independent Cross-Audit</p></div>
           </div>
         </div>
+        {canEdit && aiStatus.data?.enabled && (d.summary.mismatch > 0 || d.summary.verify > 0) && <div className="flex items-center gap-3 pt-1"><button type="button" disabled={helpBusy} onClick={() => void askAi()} className="rounded-lg border border-white/30 bg-white/10 px-3 py-1 text-[11px] font-semibold text-white hover:bg-white/20 disabled:opacity-60">{helpBusy ? '✨ AI is reading the differences…' : Object.keys(help).length ? '✨ Ask the AI again' : '✨ Ask AI to explain the differences'}</button>{helpError && <span className="text-[11px] text-red-200">{helpError}</span>}{Object.keys(help).length > 0 && <span className="text-[11px] text-violet-200">Open a mismatch row to see the AI's explanation.</span>}</div>}
         <p className="border-t border-white/10 pt-1 text-[11px] text-amber-200/90"><strong>Core Architecture Principle:</strong> The system highlights discrepancies between the Document Layer and the Site Layer. AI assists but forces human valuer resolution — no field value is auto-overwritten.</p>
       </div>
 
@@ -143,7 +162,7 @@ export default function ComparisonPage() {
                     {settled && openKey !== r.key && r.discrepancy?.resolutionNote && (
                       <tr className="bg-amber-50/60 text-xs"><td colSpan={6} className="border-t border-amber-200 p-3"><div className="rounded border border-amber-200 bg-white p-2.5"><span className="font-bold text-amber-900">Valuer Finding · {r.treatments.find((t) => t.key === r.discrepancy?.treatment)?.label}:</span><p className="text-slate-700">{r.discrepancy.resolutionNote}</p></div></td></tr>
                     )}
-                    {openKey === r.key && <ResolvePanel row={r} id={id} canEdit={canEdit} onDone={() => { setOpenKey(null); data.reload() }} />}
+                    {openKey === r.key && <ResolvePanel row={r} id={id} help={help[r.key]} canEdit={canEdit} onDone={() => { setOpenKey(null); data.reload() }} />}
                   </Fragment>
                 )
               })}

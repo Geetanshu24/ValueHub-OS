@@ -76,6 +76,7 @@ export class OcrService {
     if (status === 'DONE' || (status === 'NO_TEXT' && this.ai.enabled())) {
       suggestions.push(...(await this.readWithAi(pages, { type: document.type, mimeType: document.mimeType, bytes })));
       suggestions = suggestions.filter((s) => !document.pageCount || s.pageNumber <= document.pageCount);
+      suggestions = dedupeSuggestions(suggestions);
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -93,4 +94,15 @@ export class OcrService {
       return { status, error: error ?? null, pages: pages.length, suggested: suggestions.length };
     });
   }
+}
+
+// The pattern reader and the AI often find the same fact. Show it once, with the higher confidence.
+export function dedupeSuggestions(list: Suggestion[]): Suggestion[] {
+  const best = new Map<string, Suggestion>();
+  for (const s of list) {
+    const key = `${s.fieldKey}|${s.value.trim().toLowerCase()}`;
+    const kept = best.get(key);
+    if (!kept || s.confidence > kept.confidence) best.set(key, s);
+  }
+  return [...best.values()];
 }

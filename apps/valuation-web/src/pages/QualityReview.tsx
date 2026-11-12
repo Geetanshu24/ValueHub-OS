@@ -166,6 +166,11 @@ export default function QualityReview() {
           <div className="qr-figs"><div><small>Fair market value (₹)</small><b>{formatInr(v.totalValue)}</b></div><div><small>Realizable value (₹) · 90%</small><b>{formatInr(Number(v.totalValue) * 0.9)}</b></div><div><small>Distress / forced sale (₹) · 80%</small><b>{formatInr(Number(v.totalValue) * 0.8)}</b></div></div>
           <p className="qr-meta">To change a figure, revise the valuation in Valuation Workings; a certified value is never edited here.</p>
         </section>}
+        {report && <section className="pd-card" aria-labelledby="qr-chk-h">
+          <div className="pd-card-head"><div><span className="pd-step-tag">✓</span><div><h2 id="qr-chk-h">Principal valuer audit checklist</h2><p>Every item must be ticked by the approver before the report can be approved.</p></div></div></div>
+          <h4 className="qr-sub">Items {checklist.data && checklist.data.length > 0 && <em>{checklistDone} of {checklist.data.length}</em>}</h4>
+          {checklist.data && checklist.data.length > 0 ? <ul className="qr-list">{checklist.data.map((c) => <li key={c.itemId}><label><input type="checkbox" checked={c.checked} disabled={busy || !canApprove || !['DRAFT', 'IN_REVIEW'].includes(report.status)} onChange={(e) => void tick(c.itemId, e.target.checked)} /> {c.label}</label></li>)}</ul> : <p className="pd-muted">The firm has not set any checklist items for this kind of property.</p>}
+        </section>}
         </div>
         <section className="pd-card" aria-labelledby="qr-val-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="qr-val-h">Valuation sign-off</h2><p>The assessed value must be approved by someone other than whoever prepared it.</p></div></div></div>
@@ -200,8 +205,6 @@ export default function QualityReview() {
           {showPdf && <ReportPreview reportId={report.id} />}
           <h4 className="qr-sub">Report quality checks</h4>
           <QcPanel qc={report.qc} id={id} />
-          <h4 className="qr-sub">Review checklist {checklist.data && checklist.data.length > 0 && <em>{checklistDone} of {checklist.data.length}</em>}</h4>
-          {checklist.data && checklist.data.length > 0 ? <ul className="qr-list">{checklist.data.map((c) => <li key={c.itemId}><label><input type="checkbox" checked={c.checked} disabled={busy || !canApprove || !['DRAFT', 'IN_REVIEW'].includes(report.status)} onChange={(e) => void tick(c.itemId, e.target.checked)} /> {c.label}</label></li>)}</ul> : <p className="pd-muted">The firm has not set any checklist items for this kind of property.</p>}
           <div className="qr-actions qr-signoff">
             {report.status === 'DRAFT' && canPrepare && <button type="button" className="pd-btn is-primary" disabled={busy || !report.qc.passed || stale} title={!report.qc.passed ? 'Fix the failed checks first' : undefined} onClick={() => void move('submit-for-review')}>Send report for review</button>}
             {report.status === 'IN_REVIEW' && canApprove && (mine(rep?.author ?? null) ? <span className="pd-muted">You prepared this report, so someone else must approve it.</span> : <button type="button" className="pd-btn is-primary" disabled={busy || stale || (checklist.data ? checklistDone < checklist.data.length : false) || v?.status !== 'APPROVED'} title={v?.status !== 'APPROVED' ? 'Approve the valuation first' : undefined} onClick={() => void move('approve')}>Approve report</button>)}

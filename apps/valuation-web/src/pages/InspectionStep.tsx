@@ -92,6 +92,15 @@ export default function InspectionStep() {
   const advanced = useRef(false)
   const [floor, setFloor] = useState<FloorRow>(blankFloor)
   const [certified, setCertified] = useState(false)
+  const aiStatus = useFetch<{ enabled: boolean }>('/ai/status')
+  const [photoAi, setPhotoAi] = useState<{ photos: number; suggestions: { key: string; label: string; value: string; evidence: string }[] } | null>(null)
+  const [photoAiBusy, setPhotoAiBusy] = useState(false)
+  async function readPhotosWithAi() {
+    if (!visit) return
+    setPhotoAiBusy(true); setError(null)
+    try { setPhotoAi(await api.post(`/inspections/${visit.id}/ai-observations`, {})) } catch (caught) { setError(errorMessage(caught)) } finally { setPhotoAiBusy(false) }
+  }
+  const applyPhotoAi = (items: { key: string; value: string }[]) => { setObs({ ...obs, ...Object.fromEntries(items.map((i) => [i.key, i.value])) }); setObsDirty(true); setPhotoAi(photoAi ? { ...photoAi, suggestions: photoAi.suggestions.filter((x) => !items.some((i) => i.key === x.key)) } : null) }
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
   useEffect(() => {
     const on = () => setOnline(true); const off = () => setOnline(false)
@@ -254,6 +263,11 @@ export default function InspectionStep() {
               <div><small>Visit time</small><b>{when(visit.visitedAt)}</b></div>
               <div><small>Inspector</small><b>{visit.inspector.fullName}</b><span className={visit.latitude ? 'is-ok' : ''}>{visit.latitude ? '✅ Verified on site' : '⚠ Capture location on arrival'}</span></div>
             </div>
+            <div className="in-arrival">
+              <label>Physical access to property<select disabled={!editable} value={obs.physical_access ?? ''} onChange={(e) => { setObs({ ...obs, physical_access: e.target.value }); setObsDirty(true) }}><option value="">—</option>{['Fully accessible (interior and roof inspected)', 'Partly accessible (exterior only)', 'Not accessible'].map((o) => <option key={o}>{o}</option>)}</select></label>
+              <label>Person met at site<select disabled={!editable} value={obs.person_met ?? ''} onChange={(e) => { setObs({ ...obs, person_met: e.target.value }); setObsDirty(true) }}><option value="">—</option>{['Owner present', 'Tenant present', 'Representative of owner', 'Bank officer', 'No one present'].map((o) => <option key={o}>{o}</option>)}</select></label>
+              <label>Actual address observed on site<input disabled={!editable} maxLength={200} value={obs.actual_address ?? ''} onChange={(e) => { setObs({ ...obs, actual_address: e.target.value }); setObsDirty(true) }} placeholder="As seen on the ground" /></label>
+            </div>
             <div className="in-location">
               <span className="in-pin">⌖</span>
               <div><b>{visit.latitude && visit.longitude ? `${visit.latitude}, ${visit.longitude}` : 'Location not captured'}</b><small>{visit.latitude && visit.longitude ? <a href={`https://www.google.com/maps?q=${visit.latitude},${visit.longitude}`} target="_blank" rel="noreferrer noopener">Open in maps ↗</a> : 'Capture it while you are standing at the property.'}</small></div>
@@ -264,6 +278,11 @@ export default function InspectionStep() {
           <section className="pd-card" aria-labelledby="in-photo-h">
             <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="in-photo-h">Photographic evidence</h2><p>{visit.photos.length} photo{visit.photos.length === 1 ? '' : 's'}. Confirm each caption: it becomes part of the evidence.</p></div></div></div>
             {editable && <>
+              {visit.photos.length > 0 && aiStatus.data?.enabled && <div className="in-ai-bar"><button type="button" className="pd-btn is-ghost" disabled={photoAiBusy} onClick={() => void readPhotosWithAi()}>{photoAiBusy ? '✨ AI is looking at the photos…' : '✨ Let AI read the photos'}</button><small className="pd-muted">Suggests answers for the site questions. You decide what to keep.</small></div>}
+              {photoAi && <div className="in-ai"><b>✨ AI suggestions from {photoAi.photos} photo{photoAi.photos === 1 ? '' : 's'} (check each one)</b>
+                {photoAi.suggestions.length === 0 ? <p>The photographs did not clearly settle any question.</p> : <>{photoAi.suggestions.map((x) => <div key={x.key} className="in-ai-row"><span><b>{x.label}: {x.value}</b><small>{x.evidence}</small></span><button type="button" className="pd-btn is-ok" onClick={() => applyPhotoAi([x])}>Use</button></div>)}
+                  <div className="in-ai-bar"><button type="button" className="pd-btn is-primary" onClick={() => applyPhotoAi(photoAi.suggestions)}>Use all</button><button type="button" className="pd-btn is-ghost" onClick={() => setPhotoAi(null)}>Ignore</button></div></>}
+                <small className="pd-muted">Used answers go into the site observations; remember to save them.</small></div>}
               <div className="in-slots" aria-label="Mandatory photo perspectives">{PHOTO_CATEGORIES.map((c, n) => {
                 const shot = visit.photos.find((p) => p.category === c)
                 return <div key={c} className={`in-slot ${shot ? 'is-done' : ''}`}>

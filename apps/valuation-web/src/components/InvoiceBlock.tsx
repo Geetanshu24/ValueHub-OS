@@ -31,9 +31,9 @@ type Dialog = { kind: 'pay' } | { kind: 'chase' } | { kind: 'void'; paymentId: s
 // One invoice with everything that can be done to it: send, record a payment,
 // log a chase, void a payment or cancel. Every step asks for what it needs in a
 // dialog, and the API keeps the rules (a payment is voided with a reason, never deleted).
-export default function InvoiceCard({ invoice, canBill, isAdmin, onChange, showAssignment = true }: { invoice: Invoice; canBill: boolean; isAdmin: boolean; onChange: () => void; showAssignment?: boolean }) {
+export default function InvoiceCard({ invoice, canBill, isAdmin, onChange, showAssignment = true, defaultPreview = false }: { defaultPreview?: boolean; invoice: Invoice; canBill: boolean; isAdmin: boolean; onChange: () => void; showAssignment?: boolean }) {
   const [dialog, setDialog] = useState<Dialog>(null)
-  const [preview, setPreview] = useState(false)
+  const [preview, setPreview] = useState(defaultPreview)
   const [error, setError] = useState<string | null>(null)
   const total = Number(invoice.amount)
   const share = total > 0 ? Math.min(100, (invoice.paid / total) * 100) : 0
