@@ -560,7 +560,7 @@ a.sn-step:hover { background:#fff; }.sn-step.is-here { background:#fff; box-shad
 .stage-sync:disabled{cursor:default;opacity:.85}.stage-sync i{width:8px;height:8px;border-radius:99px;background:#f59e0b}.stage-sync i.is-on{background:#34d399}
 .in-floors,.in-amenities{margin-top:16px;border-top:1px solid #e2e8f0;padding-top:12px}
 .in-floors-head{display:flex;flex-direction:column;margin-bottom:8px}.in-floors-head b{font-size:12px}.in-floors-head small{font-size:11px;color:#64748b}
-.in-floor-form{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:10px}.in-floor-form input,.in-floor-form select{border:1px solid #cbd5e1;border-radius:6px;padding:6px;font-size:12px;min-width:0}
+.in-floor-form{display:grid;grid-template-columns:1.3fr 1.3fr .8fr .8fr 1fr 1.4fr auto;gap:6px;margin-top:10px}.in-floor-form input,.in-floor-form select{border:1px solid #cbd5e1;border-radius:6px;padding:6px;font-size:12px;min-width:0}
 @media (max-width:900px){.in-floor-form{grid-template-columns:1fr 1fr}}
 .in-floors-total td{font-weight:700;background:#f8fafc}
 .in-amenities>b{font-size:12px}.in-amenities>div{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px 12px;margin-top:8px;font-size:12px}

@@ -31,4 +31,9 @@ describe('lifecycle', () => {
     expect(life.active).toBe(16);
     expect(life.stages.every((s) => s.state === 'done')).toBe(true);
   });
+
+  it('does not hold a case at fact extraction when nothing needed reading', () => {
+    const life = computeLifecycle({ ...base, status: 'VALUATION', documents: [{ uploadedAt: new Date(), ocrStatus: 'NOT_RUN' }], inspections: [{ status: 'SUBMITTED', visitedAt: new Date(), createdAt: new Date(), inspector: 'x' }] });
+    expect(life.active).toBe(10);
+  });
 });

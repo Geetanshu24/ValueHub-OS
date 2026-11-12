@@ -56,7 +56,8 @@ export function computeLifecycle(input: LifecycleInput): { stages: Stage[]; acti
     1: { ok: true, detail: 'Assignment created', at: input.createdAt },
     2: { ok: input.documents.length > 0, detail: input.documents.length ? `${input.documents.length} document${input.documents.length === 1 ? '' : 's'} received` : 'No documents yet', at: first(input.documents, (d) => d.uploadedAt) },
     3: { ok: Boolean(input.valuer), detail: input.valuer ? `Assigned to ${input.valuer}` : 'No valuer assigned', at: input.createdAt },
-    4: { ok: input.factCount > 0 || input.documents.some((d) => d.ocrStatus === 'DONE'), detail: `${input.factCount} fact${input.factCount === 1 ? '' : 's'} read from the documents`, at: null },
+    // Facts are optional: a case that has moved on to a site visit has passed this stage even if nothing was read.
+    4: { ok: input.factCount > 0 || input.documents.some((d) => d.ocrStatus === 'DONE') || visits.length > 0, detail: `${input.factCount} fact${input.factCount === 1 ? '' : 's'} read from the documents`, at: null },
     5: { ok: visits.length > 0, detail: visits[0] ? `Visit on ${visits[0].visitedAt.toISOString().slice(0, 10)} (${visits[0].inspector})` : 'Not scheduled', at: first(visits, (v) => v.createdAt) },
     6: { ok: onSite.length > 0, detail: onSite[0] ? `${onSite[0].inspector} on site` : 'Not started', at: first(onSite, (v) => v.visitedAt) },
     7: { ok: siteDone.length > 0, detail: siteDone.length ? 'Measurements and photographs submitted' : 'Waiting for the inspection to be submitted', at: first(siteDone, (v) => v.visitedAt) },
