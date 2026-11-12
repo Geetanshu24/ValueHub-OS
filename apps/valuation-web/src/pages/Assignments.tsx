@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import NewAssignment from './NewAssignment.tsx'
 import { AlertCircle, Download, ExternalLink, FileText, Plus, Search, X } from 'lucide-react'
 import { ASSIGNMENT_STATUSES, ASSIGNMENT_STATUS_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS, type AssignmentStatus, type PropertyClass } from '@value-hub/valuation-shared'
 import Pager from '../components/Pager.tsx'
@@ -32,6 +33,7 @@ const paidOf = (r: Row) => {
 
 export default function Assignments() {
   const navigate = useNavigate()
+  const [creating, setCreating] = useState(false)
   const toast = useToast()
   const [params, setParams] = useSearchParams()
   const [page, setPage] = useState(1)
@@ -70,7 +72,7 @@ export default function Assignments() {
         <div className="flex w-full items-center justify-end space-x-2.5 sm:w-auto">
           <span className="text-xs font-medium text-slate-500">{data ? `Showing ${rows.length} of ${data.total} cases` : ''}</span>
           <button type="button" onClick={exportCsv} className="flex items-center space-x-1.5 rounded-lg border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"><Download className="h-3.5 w-3.5" /><span>Export CSV</span></button>
-          <Link to="/assignments/new" className="flex items-center space-x-1.5 rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-navyDark"><Plus className="h-3.5 w-3.5" /><span>New Case</span></Link>
+          <button type="button" onClick={() => setCreating(true)} className="flex items-center space-x-1.5 rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-navyDark"><Plus className="h-3.5 w-3.5" /><span>New Case</span></button>
         </div>
       </div>
 
@@ -120,6 +122,16 @@ export default function Assignments() {
         </div>
         {data && <div className="border-t border-slate-200 bg-slate-50 p-3"><Pager page={data.page} pageSize={data.pageSize} total={data.total} onChange={setPage} /></div>}
       </div>
+      {creating && <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Create new case registration">
+        <div className="absolute inset-0 bg-slate-900/50" onClick={() => setCreating(false)} />
+        <div className="relative flex h-full w-full max-w-3xl flex-col bg-white shadow-2xl">
+          <div className="flex items-center justify-between bg-gradient-to-r from-brand-navy to-brand-navyDark px-5 py-4 text-white">
+            <div><h2 className="text-sm font-bold">Create New Case Registration</h2><p className="text-[11px] text-slate-300">Add the bank instruction, confirm the details, reuse earlier work and assign it</p></div>
+            <button type="button" onClick={() => setCreating(false)} className="rounded-lg p-1 hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" /></button>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-slate-50 slide-intake"><NewAssignment /></div>
+        </div>
+      </div>}
     </div>
   )
 }

@@ -531,3 +531,7 @@ a.sn-step:hover { background:#fff; }.sn-step.is-here { background:#fff; box-shad
 .qr-layer-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .qr-layer-grid>div{background:#f8fafc;border-radius:6px;padding:8px}
 .qr-layer-grid small{display:block;font-size:10px;text-transform:uppercase;font-weight:700;color:#64748b}.qr-layer-grid b{font-size:12px;color:#0f172a;word-break:break-word}.qr-layer-grid em{display:block;font-style:normal;font:9px ui-monospace,monospace;color:#94a3b8}
+
+/* New Case slide-over: the intake wizard without its own page chrome */
+.slide-intake .intake-topline{display:none}
+.slide-intake .intake-shell{max-width:none;padding:16px}
