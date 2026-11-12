@@ -171,7 +171,7 @@ export default function ValuationStep() {
     <div className="pd-grid">
       <div className="pd-main">
         <section className="pd-card" aria-labelledby="va-basis-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="va-basis-h">What the site and papers say</h2><p>{ctx?.site ? `Site visit by ${ctx.site.inspector} on ${new Date(ctx.site.visitedAt).toLocaleDateString('en-IN')}.` : 'No submitted site visit yet.'} Pick the area to value; the source is written for you.</p></div></div></div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="va-basis-h">Compilation data health</h2><p>{ctx?.site ? `Site visit by ${ctx.site.inspector} on ${new Date(ctx.site.visitedAt).toLocaleDateString('en-IN')}.` : 'No submitted site visit yet.'} Pick the area to value; the source is written for you.</p></div></div></div>
           {ctx && ctx.openMaterialDiscrepancies > 0 && <p className="pd-flag">{ctx.openMaterialDiscrepancies} material difference{ctx.openMaterialDiscrepancies === 1 ? '' : 's'} between the site and the papers {ctx.openMaterialDiscrepancies === 1 ? 'is' : 'are'} still open. <Link to={stepPath(2, id)}>Decide them in Site Inspection</Link> before quality review, and explain the adopted area below.</p>}
           {ctx?.site?.observations && <div className="va-chips">{[['Age', ctx.site.observations.age_years && `${ctx.site.observations.age_years} yrs`], ['Floors', ctx.site.observations.floors], ['Construction', ctx.site.observations.construction], ['Quality', ctx.site.observations.quality], ['Condition', ctx.site.observations.condition], ['Road', ctx.site.observations.road_width_ft && `${ctx.site.observations.road_width_ft} ft`]].filter(([, v]) => v).map(([k, v]) => <span key={k as string}><em>{k}</em>{v}</span>)}</div>}
           {(ctx?.candidates.length ?? 0) === 0 ? <div className="pd-empty"><b>No areas on record</b><p>Submit a site visit or verify an area on a document, or type the area yourself below.</p></div> : <div className="in-table-wrap"><table className="in-table"><thead><tr><th>Part</th><th>From</th><th className="is-num">Area (sq. m)</th><th>Agreement</th><th /></tr></thead><tbody>
@@ -181,7 +181,7 @@ export default function ValuationStep() {
         </section>
 
         <section className="pd-card" aria-labelledby="va-ev-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="va-ev-h">Market evidence</h2><p>A comparable can be cited only after a second person has verified it.</p></div></div>{canDraft && !addingEvidence && <button type="button" className="pd-btn is-primary" onClick={() => setAddingEvidence(true)}>＋ Add comparable</button>}</div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="va-ev-h">Market rate evidence</h2><p>A comparable can be cited only after a second person has verified it.</p></div></div>{canDraft && !addingEvidence && <button type="button" className="pd-btn is-primary" onClick={() => setAddingEvidence(true)}>＋ Add comparable</button>}</div>
           {(summary.data?.length ?? 0) > 0 && <div className="va-rates">{summary.data?.map((x) => <div key={x.areaBasis}><small>{BASIS_LABEL[x.areaBasis] ?? x.areaBasis} · {x.count} verified</small><b>₹{formatInr(x.median)}</b><span>median · ₹{formatInr(x.min)} to ₹{formatInr(x.max)}</span></div>)}</div>}
           {addingEvidence && <form className="va-block" onSubmit={(e) => { e.preventDefault(); void addEvidence() }}><div className="va-grid">
             <F label="Location" wide><input required minLength={3} value={evidence.location} onChange={(e) => setEvidence({ ...evidence, location: e.target.value })} /></F>
@@ -201,7 +201,7 @@ export default function ValuationStep() {
         </section>
 
         {editable && <section className="pd-card" aria-labelledby="va-work-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">C</span><div><h2 id="va-work-h">Workings: {PROPERTY_CLASS_LABELS[cls]}</h2><p>{list.length > 0 ? `Continuing from version ${latest?.versionNumber ?? list[0].versionNumber}. Saving creates a new version.` : 'Fill in the form; the value is calculated as you type.'}</p></div></div></div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">C</span><div><h2 id="va-work-h">Valuation computation: {PROPERTY_CLASS_LABELS[cls]}</h2><p>{list.length > 0 ? `Continuing from version ${latest?.versionNumber ?? list[0].versionNumber}. Saving creates a new version.` : 'Fill in the form; the value is calculated as you type.'}</p></div></div></div>
 
           {(cls === 'FLAT' || cls === 'COMMERCIAL') && <>
             {cls === 'COMMERCIAL' && <div className="va-seg" role="group" aria-label="Method">{(['SALES', 'INCOME'] as const).map((m) => <button key={m} type="button" className={s.method === m ? 'is-on' : ''} onClick={() => setS({ ...s, method: m })}>{m === 'SALES' ? 'Sales comparison' : 'Income capitalisation'}</button>)}</div>}
@@ -288,8 +288,8 @@ export default function ValuationStep() {
           </div></div>
         </section>}
 
-        {editable && <section className="pd-card" aria-labelledby="va-res-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="va-res-h">Calculation</h2><p>{calcBusy ? 'Calculating…' : calc ? `${calc.result.method.replaceAll('_', ' ').toLowerCase()} · updates as you type` : 'The workings appear here once the form is complete.'}</p></div></div></div>
+        {editable && <section className="pd-card va-fmv" aria-labelledby="va-res-h">
+          <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="va-res-h">Fair market value assessment</h2><p>{calcBusy ? 'Calculating…' : calc ? `${calc.result.method.replaceAll('_', ' ').toLowerCase()} · updates as you type` : 'The workings appear here once the form is complete.'}</p></div></div></div>
           {calc ? <>
             <div className="va-total"><small>Total value</small><b>₹ {formatInr(calc.result.totalValue)}</b><span>{rupeesInWords(calc.result.totalValue)}</span>
               {adopted ? <em>≈ ₹ {formatInr(calc.result.totalValue / adopted)} per sq. m of adopted area ({fmt(adopted)} sq. m)</em> : null}

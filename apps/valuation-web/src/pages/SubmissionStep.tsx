@@ -30,6 +30,20 @@ const today = () => new Date().toISOString().slice(0, 10)
 const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10)
 const overdue = (q: BankQuery) => q.status === 'OPEN' && new Date(q.dueAt) < new Date(new Date().toDateString())
 
+function AgingTracker() {
+  const list = useFetch<Paginated<Invoice>>('/invoices?pageSize=10')
+  const rows = list.data?.items ?? []
+  const days = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
+  return <section className="pd-card" aria-labelledby="sb-age-h">
+    <div className="pd-card-head"><div><span className="pd-step-tag">₹</span><div><h2 id="sb-age-h">Outstanding fee aging &amp; realization tracker</h2><p>The ten most recent invoices across all cases.</p></div></div><Link to="/accounts" className="pd-btn is-ghost">All accounts →</Link></div>
+    {rows.length === 0 ? <p className="pd-muted">{list.error ?? 'No invoices yet.'}</p> : <div className="in-table-wrap"><table className="in-table"><thead><tr><th>Invoice #</th><th>Case ref</th><th>Bank / client</th><th className="is-num">Fee (₹)</th><th>Status</th><th>Aging</th></tr></thead><tbody>
+      {rows.map((inv) => <tr key={inv.id}><td><b>{inv.code}</b></td><td>{inv.assignment.code}</td><td>{inv.assignment.bank.name}</td><td className="is-num">{formatInr(inv.amount)}</td>
+        <td><span className={inv.outstanding <= 0 ? 'badge-matched' : inv.overdue ? 'badge-mismatch' : 'badge-verify'}>{inv.outstanding <= 0 ? 'Paid' : inv.overdue ? 'Overdue' : inv.paid > 0 ? 'Part paid' : 'Unpaid'}</span></td>
+        <td>{inv.outstanding <= 0 ? '—' : `${days(inv.issuedOn)} days`}</td></tr>)}
+    </tbody></table></div>}
+  </section>
+}
+
 export default function SubmissionStep() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -133,7 +147,7 @@ export default function SubmissionStep() {
     <div className="pd-grid">
       <div className="pd-main">
         <section className="pd-card" aria-labelledby="sb-trail-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="sb-trail-h">Approval trail</h2><p>Who signed off what. Issuing locks the report; it is never edited after this.</p></div></div></div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="sb-trail-h">Approval trail &amp; final report</h2><p>Who signed off what. Issuing locks the report; it is never edited after this.</p></div></div></div>
           {!val ? <div className="pd-empty"><b>No valuation yet</b><p>Complete the earlier steps first.</p></div> : <ol className="sb-trail">
             <li className="is-done"><span>✓</span><div><b>Valuation approved</b><small>Version {val.versionNumber} · ₹ {formatInr(val.totalValue)}{val.approvedBy ? ` · by ${val.approvedBy}` : ''}{val.approvedAt ? ` · ${formatDate(val.approvedAt)}` : ''}</small></div></li>
             <li className={rep && ['APPROVED', 'ISSUED'].includes(rep.status) ? 'is-done' : ''}><span>{rep && ['APPROVED', 'ISSUED'].includes(rep.status) ? '✓' : '2'}</span><div><b>Report approved</b><small>{rep && ['APPROVED', 'ISSUED'].includes(rep.status) ? `R${rep.versionNumber}${rep.approvedBy ? ` · by ${rep.approvedBy}` : ''}${rep.approvedAt ? ` · ${formatDate(rep.approvedAt)}` : ''}` : 'Waiting for quality review'}</small></div></li>
@@ -148,7 +162,7 @@ export default function SubmissionStep() {
         </section>
 
         <section className="pd-card" aria-labelledby="sb-send-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="sb-send-h">Submit to the bank</h2><p>“Sent” means the mail server accepted it. The bank’s acknowledgement is recorded by you, never assumed.</p></div></div></div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="sb-send-h">Multi-channel report dispatch</h2><p>“Sent” means the mail server accepted it. The bank’s acknowledgement is recorded by you, never assumed.</p></div></div></div>
           {issued && canAct && stage !== 'CLOSED' && <form onSubmit={submit} className="sb-send">
             <div className="sb-channels" role="group" aria-label="Channel">{CHANNELS.map(([key, label, hint]) => <button key={key} type="button" className={send.channel === key ? 'is-on' : ''} onClick={() => setSend({ ...send, channel: key })}><b>{label}</b><small>{hint}</small></button>)}</div>
             {emailBlocked && <p className="pd-flag">Email is not set up on this server (SMTP). Record the submission under another channel, or ask an admin to configure it.</p>}
@@ -200,7 +214,7 @@ export default function SubmissionStep() {
         </section>
 
         <section className="pd-card" aria-labelledby="sb-close-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="sb-close-h">Invoice &amp; close</h2><p>Raise the fee, then close the assignment once the bank has what it needs.</p></div></div><Link to="/accounts" className="pd-btn is-ghost">Open Accounts ↗</Link></div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="sb-close-h">Professional tax invoice &amp; close</h2><p>Raise the fee, then close the assignment once the bank has what it needs.</p></div></div><Link to="/accounts" className="pd-btn is-ghost">Open Accounts ↗</Link></div>
           {(invoiceList.data?.items.length ?? 0) > 0 ? invoiceList.data?.items.map((inv) => <InvoiceCard key={inv.id} invoice={inv} canBill={canBill} isAdmin={user?.role === 'FIRM_ADMIN'} onChange={reloadAll} showAssignment={false} />) : <p className="pd-muted">No invoice raised for this assignment yet.</p>}
           {canBill && ['SUBMITTED', 'CLOSED'].includes(stage) && <RaiseInvoice assignmentId={id} fee={a.fee ?? null} invoiced={(invoiceList.data?.items ?? []).filter((i) => i.status !== 'CANCELLED').reduce((t, i) => t + Number(i.amount), 0)} onDone={reloadAll} />}
           {!canBill && <p className="pd-muted">Invoices are raised by the firm admin or accounts. {a.fee ? `Agreed fee ₹ ${formatInr(a.fee)}.` : 'No fee is recorded on this assignment.'}</p>}
@@ -211,6 +225,8 @@ export default function SubmissionStep() {
               : <div className="qr-actions"><button type="button" className="pd-btn is-primary" disabled={!ctx || ctx.closeProblems.length > 0 || busy} onClick={() => setConfirmClose(true)}>Close assignment…</button></div>)}
           </>}
         </section>
+
+        {canBill && <AgingTracker />}
       </div>
 
       <aside className="pd-aside"><ReadyCard title={stage === 'CLOSED' ? 'Assignment closed' : 'Ready to close?'} readiness={ctx?.readiness ?? null} summary={!ctx ? '' : stage === 'CLOSED' ? 'The file is archived.' : ctx.readiness.canProceed ? 'Everything is on record. You can close it.' : 'Issue, send and answer the bank, then close.'}>

@@ -56,6 +56,27 @@ function ReportPreview({ reportId }: { reportId: string }) {
   return <div className="qr-preview">{failed ? <p className="pd-muted">{failed}</p> : url ? <iframe title="Report preview" src={url} /> : <p className="pd-muted">Loading the report…</p>}</div>
 }
 
+interface LayerRow { key: string; label: string; group: string; status: string; delta: string | null; document: { value: string; source: string } | null; site: { value: string; source: string } | null }
+function EvidenceLayers({ assignmentId }: { assignmentId: string }) {
+  const data = useFetch<{ rows: LayerRow[]; open: number }>(`/assignments/${assignmentId}/comparison`)
+  const [tab, setTab] = useState<string | null>(null)
+  const rows = data.data?.rows ?? []
+  const groups = [...new Set(rows.map((r) => r.group))]
+  const current = tab && groups.includes(tab) ? tab : groups[0]
+  const badge: Record<string, string> = { consistent: 'badge-matched', verify: 'badge-verify', mismatch: 'badge-mismatch', missing: 'badge-missing', document: 'badge-missing' }
+  return <section className="pd-card" aria-labelledby="qr-layers-h">
+    <div className="pd-card-head"><div><span className="pd-step-tag">◎</span><div><h2 id="qr-layers-h">3-layer evidence verification</h2><p>Document layer, site layer and the verdict between them. {data.data ? `${data.data.open} difference${data.data.open === 1 ? '' : 's'} still open.` : ''}</p></div></div></div>
+    {rows.length === 0 ? <p className="pd-muted">{data.error ?? 'Nothing to compare yet.'}</p> : <>
+      <div className="qr-tabs" role="tablist">{groups.map((g) => <button key={g} type="button" role="tab" aria-selected={g === current} className={g === current ? 'is-on' : ''} onClick={() => setTab(g)}>{g}</button>)}</div>
+      <div className="qr-layers">{rows.filter((r) => r.group === current).map((r) => <div key={r.key} className="qr-layer">
+        <div className="qr-layer-head"><b>{r.label}</b><span className={badge[r.status] ?? 'badge-missing'}>{r.status}</span>{r.delta && <small>{r.delta}</small>}</div>
+        <div className="qr-layer-grid"><div><small>Document layer</small><b>{r.document?.value ?? 'Not recorded'}</b>{r.document && <em>{r.document.source}</em>}</div>
+          <div><small>Site layer</small><b>{r.site?.value ?? 'Not recorded'}</b>{r.site && <em>{r.site.source}</em>}</div></div>
+      </div>)}</div>
+    </>}
+  </section>
+}
+
 export default function QualityReview() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -132,6 +153,7 @@ export default function QualityReview() {
 
     <div className="pd-grid">
       <div className="pd-main">
+        <EvidenceLayers assignmentId={id} />
         <section className="pd-card" aria-labelledby="qr-val-h">
           <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="qr-val-h">Valuation sign-off</h2><p>The assessed value must be approved by someone other than whoever prepared it.</p></div></div></div>
           {!v ? <div className="pd-empty"><b>No valuation yet</b><p>Complete the valuation workings first.</p><Link to={stepPath(3, id)} className="pd-btn is-primary">Go to Valuation Workings</Link></div> : <>

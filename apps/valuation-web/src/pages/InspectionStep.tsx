@@ -211,7 +211,7 @@ export default function InspectionStep() {
     <div className="pd-grid">
       <div className="pd-main">
         <section className="pd-card" aria-labelledby="in-visits-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="in-visits-h">Site visits</h2><p>Plan who goes and when. Each visit has its own measurements, photos and notes.</p></div></div>{canPlan && !scheduling && <button type="button" className="pd-btn is-primary" onClick={() => { setScheduling(true); setPlan({ inspectorId: a.assignedValuer ? staff.data?.find((s) => s.fullName === a.assignedValuer.fullName)?.id ?? '' : '', visitedAt: '' }) }}>＋ Schedule a visit</button>}</div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">⛑</span><div><h2 id="in-visits-h">Site visits</h2><p>Plan who goes and when. Each visit has its own measurements, photos and notes.</p></div></div>{canPlan && !scheduling && <button type="button" className="pd-btn is-primary" onClick={() => { setScheduling(true); setPlan({ inspectorId: a.assignedValuer ? staff.data?.find((s) => s.fullName === a.assignedValuer.fullName)?.id ?? '' : '', visitedAt: '' }) }}>＋ Schedule a visit</button>}</div>
           {scheduling && <form className="in-inline-form" onSubmit={schedule}>
             <label>Who will go<select required value={plan.inspectorId} onChange={(e) => setPlan({ ...plan, inspectorId: e.target.value })}><option value="">Choose…</option>{staff.data?.filter((s) => s.role === 'INSPECTOR' || s.role === 'VALUER').map((s) => <option key={s.id} value={s.id}>{s.fullName} ({s.role.toLowerCase()})</option>)}</select></label>
             <label>Date &amp; time<input type="datetime-local" required value={plan.visitedAt} onChange={(e) => setPlan({ ...plan, visitedAt: e.target.value })} /></label>
@@ -222,7 +222,7 @@ export default function InspectionStep() {
 
         {visit && <>
           <section className="pd-card" aria-labelledby="in-visit-h">
-            <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="in-visit-h">Visit &amp; location</h2><p>{visit.inspector.fullName} · {when(visit.visitedAt)}</p></div></div>
+            <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="in-visit-h">Identification &amp; GPS arrival</h2><p>{visit.inspector.fullName} · {when(visit.visitedAt)}</p></div></div>
               {canPlan && !isLocked && !moving && <button type="button" className="pd-btn is-ghost" onClick={() => setMoving({ inspectorId: visit.inspector.id, visitedAt: toLocalInput(visit.visitedAt) })}>Reschedule</button>}</div>
             <ol className="in-timeline">{STAGES.map(([key, label], index) => <li key={key} className={index < stageIndex ? 'is-done' : index === stageIndex ? 'is-now' : ''}><span>{index < stageIndex ? '✓' : index + 1}</span>{label}</li>)}</ol>
             {moving && <form className="in-inline-form" onSubmit={reschedule}>
@@ -230,6 +230,11 @@ export default function InspectionStep() {
               <label>Date &amp; time<input type="datetime-local" required value={moving.visitedAt} onChange={(e) => setMoving({ ...moving, visitedAt: e.target.value })} /></label>
               <div><button type="button" className="pd-btn is-ghost" onClick={() => setMoving(null)}>Cancel</button><button className="pd-btn is-primary" disabled={busy}>Save</button></div>
             </form>}
+            <div className="in-gps">
+              <div><small>GPS geolocation lock</small><b>{visit.latitude && visit.longitude ? `${Number(visit.latitude).toFixed(4)}° N, ${Number(visit.longitude).toFixed(4)}° E` : 'Not captured'}</b></div>
+              <div><small>Visit time</small><b>{when(visit.visitedAt)}</b></div>
+              <div><small>Inspector</small><b>{visit.inspector.fullName}</b><span className={visit.latitude ? 'is-ok' : ''}>{visit.latitude ? '✅ Verified on site' : '⚠ Capture location on arrival'}</span></div>
+            </div>
             <div className="in-location">
               <span className="in-pin">⌖</span>
               <div><b>{visit.latitude && visit.longitude ? `${visit.latitude}, ${visit.longitude}` : 'Location not captured'}</b><small>{visit.latitude && visit.longitude ? <a href={`https://www.google.com/maps?q=${visit.latitude},${visit.longitude}`} target="_blank" rel="noreferrer noopener">Open in maps ↗</a> : 'Capture it while you are standing at the property.'}</small></div>
@@ -237,24 +242,22 @@ export default function InspectionStep() {
             </div>
           </section>
 
-          <section className="pd-card" aria-labelledby="in-obs-h">
-            <div className="pd-card-head"><div><span className="pd-step-tag">C</span><div><h2 id="in-obs-h">Site observations</h2><p>{answered} of {totalFields} answered. Only fill what you actually saw.</p></div></div>{editable && <button type="button" className={`pd-btn ${obsDirty ? 'is-primary' : 'is-ghost'}`} disabled={busy || !obsDirty} onClick={() => void saveObservations()}>{obsDirty ? 'Save observations' : 'Saved'}</button>}</div>
-            <div className="in-acc">{OBSERVATION_SECTIONS.map((section) => {
-              const filled = section.fields.filter((f) => (obs[f.key] ?? '').trim() !== '').length
-              const isOpen = open[section.id] ?? false
-              return <div key={section.id} className={`in-acc-item ${isOpen ? 'is-open' : ''}`}>
-                <button type="button" className="in-acc-head" aria-expanded={isOpen} onClick={() => setOpen((current) => ({ ...current, [section.id]: !(current[section.id] ?? false) }))}><span><b>{section.title}</b><small>{section.hint}</small></span><em className={filled === section.fields.length ? 'is-full' : ''}>{filled}/{section.fields.length}</em><i aria-hidden>{isOpen ? '−' : '+'}</i></button>
-                {isOpen && <div className="in-obs-grid">{section.fields.map((f) => <label key={f.key} className={f.type === 'textarea' ? 'is-wide' : ''}>{f.label}{f.unit ? ` (${f.unit})` : ''}
-                  {f.type === 'select' ? <select disabled={!editable} value={obs[f.key] ?? ''} onChange={(e) => { setObs({ ...obs, [f.key]: e.target.value }); setObsDirty(true) }}><option value="">—</option>{f.options?.map((o) => <option key={o} value={o}>{o}</option>)}</select>
-                    : f.type === 'textarea' ? <textarea rows={3} disabled={!editable} value={obs[f.key] ?? ''} maxLength={1000} onChange={(e) => { setObs({ ...obs, [f.key]: e.target.value }); setObsDirty(true) }} />
-                    : <input type={f.type === 'number' ? 'number' : 'text'} min={f.type === 'number' ? 0 : undefined} disabled={!editable} value={obs[f.key] ?? ''} maxLength={200} onChange={(e) => { setObs({ ...obs, [f.key]: e.target.value }); setObsDirty(true) }} />}
-                </label>)}</div>}
-              </div>
-            })}</div>
+          <section className="pd-card" aria-labelledby="in-photo-h">
+            <div className="pd-card-head"><div><span className="pd-step-tag">A</span><div><h2 id="in-photo-h">Photographic evidence</h2><p>{visit.photos.length} photo{visit.photos.length === 1 ? '' : 's'}. Confirm each caption: it becomes part of the evidence.</p></div></div></div>
+            {editable && <>
+              <div className="in-chips" role="group" aria-label="Photo category">{PHOTO_CATEGORIES.map((c) => <button key={c} type="button" className={category === c ? 'is-on' : ''} onClick={() => setCategory(c)}>{c}</button>)}</div>
+              <label className={`in-drop ${over ? 'is-over' : ''}`} onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={drop}><input type="file" hidden multiple accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(e) => { void uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = '' }} /><span>▣</span><b>{uploading ? `Uploading ${uploading}…` : <>Take or drop photos as <em>{category}</em></>}</b><small>JPG, PNG or WebP · up to 10 MB each</small></label>
+            </>}
+            {visit.photos.length > 0 && <div className="in-photos">{visit.photos.map((p) => <article key={p.id} className={`in-photo ${p.captionConfirmed ? 'is-ok' : ''}`}>
+              <PhotoThumb id={p.id} alt={p.caption ?? p.category ?? 'Site photo'} onOpen={() => setLightbox(p)} />
+              <div className="in-photo-body">
+                {editable ? <select aria-label="Category" value={p.category ?? ''} onChange={(e) => void patchPhoto(p, { category: e.target.value, captionConfirmed: false })}><option value="">No category</option>{PHOTO_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select> : <span className="pd-pill is-type">{p.category ?? 'Photo'}</span>}
+                {editable ? <input aria-label="Caption" defaultValue={p.caption ?? ''} placeholder="Describe what it shows" maxLength={300} onBlur={(e) => { if (e.target.value.trim() !== (p.caption ?? '')) void patchPhoto(p, { caption: e.target.value.trim(), captionConfirmed: false }) }} /> : <p>{p.caption ?? '(no caption)'}</p>}
+                <div className="in-photo-actions">{editable ? <><button type="button" className={`pd-btn ${p.captionConfirmed ? 'is-ok' : 'is-primary'}`} disabled={busy || (!p.captionConfirmed && !(p.caption ?? '').trim())} title={!(p.caption ?? '').trim() ? 'Add a caption first' : undefined} onClick={() => void patchPhoto(p, { captionConfirmed: !p.captionConfirmed })}>{p.captionConfirmed ? '✓ Confirmed' : 'Confirm caption'}</button><button type="button" className="pd-btn is-ghost" aria-label="Remove photo" onClick={() => void run(() => api.delete(`/inspection-photos/${p.id}`))}>Remove</button></> : <span className={`pd-pill ${p.captionConfirmed ? 'is-verified' : 'is-warn'}`}>{p.captionConfirmed ? 'Confirmed' : 'Unconfirmed'}</span>}</div>
+              </div></article>)}</div>}
           </section>
-
           <section className="pd-card" aria-labelledby="in-meas-h">
-            <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="in-meas-h">Measurements</h2><p>Link a measurement to a documented area and any difference is flagged when you submit.</p></div></div></div>
+            <div className="pd-card-head"><div><span className="pd-step-tag">B</span><div><h2 id="in-meas-h">Boundaries, dimensions &amp; measurements</h2><p>Link a measurement to a documented area and any difference is flagged when you submit.</p></div></div></div>
             {(context.data?.documentedAreas.length ?? 0) > 0 && <div className="in-docref"><b>Areas the documents claim</b>{context.data?.documentedAreas.map((d, i) => <span key={i}><em>{factLabel(d.fieldKey)}</em> {fmt(d.value)} sq. m <small>{d.source} · {d.state === 'UNVERIFIED' ? 'not yet verified' : 'verified'}</small></span>)}</div>}
             {visit.measurements.length === 0 ? <div className="pd-empty"><b>Nothing measured yet</b><p>{editable ? 'Add the plot and each floor you measure below.' : 'No measurements were recorded.'}</p></div> : <div className="in-table-wrap"><table className="in-table"><thead><tr><th>Part</th><th>Compared with</th><th className="is-num">Measured</th><th className="is-num">Documented</th><th>Difference</th><th>Method</th><th /></tr></thead><tbody>
               {visit.measurements.map((row) => { const c = compare(row.fieldKey, Number(row.areaSqm)); return <tr key={row.id}><td><b>{row.label}</b>{row.note && <small>{row.note}</small>}</td><td>{row.fieldKey ? factLabel(row.fieldKey) : <span className="pd-muted">Not compared</span>}</td><td className="is-num">{fmt(Number(row.areaSqm))}</td><td className="is-num">{c ? fmt(c.nearest.value) : '—'}</td><td>{c ? <span className={`pd-pill ${c.within ? 'is-verified' : 'is-warn'}`}>{c.within ? 'Within tolerance' : `${c.pct > 0 ? '+' : ''}${c.pct.toFixed(1)}%`}</span> : '—'}</td><td>{row.method}</td><td>{editable && <button type="button" className="pd-btn is-ghost" aria-label={`Remove ${row.label}`} onClick={() => void run(() => api.delete(`/inspection-measurements/${row.id}`))}>Remove</button>}</td></tr> })}
@@ -272,24 +275,26 @@ export default function InspectionStep() {
             </form>}
           </section>
 
-          <section className="pd-card" aria-labelledby="in-photo-h">
-            <div className="pd-card-head"><div><span className="pd-step-tag">E</span><div><h2 id="in-photo-h">Site photos</h2><p>{visit.photos.length} photo{visit.photos.length === 1 ? '' : 's'}. Confirm each caption: it becomes part of the evidence.</p></div></div></div>
-            {editable && <>
-              <div className="in-chips" role="group" aria-label="Photo category">{PHOTO_CATEGORIES.map((c) => <button key={c} type="button" className={category === c ? 'is-on' : ''} onClick={() => setCategory(c)}>{c}</button>)}</div>
-              <label className={`in-drop ${over ? 'is-over' : ''}`} onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={drop}><input type="file" hidden multiple accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(e) => { void uploadPhotos(Array.from(e.target.files ?? [])); e.target.value = '' }} /><span>▣</span><b>{uploading ? `Uploading ${uploading}…` : <>Take or drop photos as <em>{category}</em></>}</b><small>JPG, PNG or WebP · up to 10 MB each</small></label>
-            </>}
-            {visit.photos.length > 0 && <div className="in-photos">{visit.photos.map((p) => <article key={p.id} className={`in-photo ${p.captionConfirmed ? 'is-ok' : ''}`}>
-              <PhotoThumb id={p.id} alt={p.caption ?? p.category ?? 'Site photo'} onOpen={() => setLightbox(p)} />
-              <div className="in-photo-body">
-                {editable ? <select aria-label="Category" value={p.category ?? ''} onChange={(e) => void patchPhoto(p, { category: e.target.value, captionConfirmed: false })}><option value="">No category</option>{PHOTO_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select> : <span className="pd-pill is-type">{p.category ?? 'Photo'}</span>}
-                {editable ? <input aria-label="Caption" defaultValue={p.caption ?? ''} placeholder="Describe what it shows" maxLength={300} onBlur={(e) => { if (e.target.value.trim() !== (p.caption ?? '')) void patchPhoto(p, { caption: e.target.value.trim(), captionConfirmed: false }) }} /> : <p>{p.caption ?? '(no caption)'}</p>}
-                <div className="in-photo-actions">{editable ? <><button type="button" className={`pd-btn ${p.captionConfirmed ? 'is-ok' : 'is-primary'}`} disabled={busy || (!p.captionConfirmed && !(p.caption ?? '').trim())} title={!(p.caption ?? '').trim() ? 'Add a caption first' : undefined} onClick={() => void patchPhoto(p, { captionConfirmed: !p.captionConfirmed })}>{p.captionConfirmed ? '✓ Confirmed' : 'Confirm caption'}</button><button type="button" className="pd-btn is-ghost" aria-label="Remove photo" onClick={() => void run(() => api.delete(`/inspection-photos/${p.id}`))}>Remove</button></> : <span className={`pd-pill ${p.captionConfirmed ? 'is-verified' : 'is-warn'}`}>{p.captionConfirmed ? 'Confirmed' : 'Unconfirmed'}</span>}</div>
-              </div></article>)}</div>}
+          <section className="pd-card" aria-labelledby="in-obs-h">
+            <div className="pd-card-head"><div><span className="pd-step-tag">C</span><div><h2 id="in-obs-h">Structure, services, locality &amp; remarks</h2><p>{answered} of {totalFields} answered. Only fill what you actually saw.</p></div></div>{editable && <button type="button" className={`pd-btn ${obsDirty ? 'is-primary' : 'is-ghost'}`} disabled={busy || !obsDirty} onClick={() => void saveObservations()}>{obsDirty ? 'Save observations' : 'Saved'}</button>}</div>
+            <div className="in-acc">{OBSERVATION_SECTIONS.map((section) => {
+              const filled = section.fields.filter((f) => (obs[f.key] ?? '').trim() !== '').length
+              const isOpen = open[section.id] ?? false
+              return <div key={section.id} className={`in-acc-item ${isOpen ? 'is-open' : ''}`}>
+                <button type="button" className="in-acc-head" aria-expanded={isOpen} onClick={() => setOpen((current) => ({ ...current, [section.id]: !(current[section.id] ?? false) }))}><span><b>{section.title}</b><small>{section.hint}</small></span><em className={filled === section.fields.length ? 'is-full' : ''}>{filled}/{section.fields.length}</em><i aria-hidden>{isOpen ? '−' : '+'}</i></button>
+                {isOpen && <div className="in-obs-grid">{section.fields.map((f) => <label key={f.key} className={f.type === 'textarea' ? 'is-wide' : ''}>{f.label}{f.unit ? ` (${f.unit})` : ''}
+                  {f.type === 'select' ? <select disabled={!editable} value={obs[f.key] ?? ''} onChange={(e) => { setObs({ ...obs, [f.key]: e.target.value }); setObsDirty(true) }}><option value="">—</option>{f.options?.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+                    : f.type === 'textarea' ? <textarea rows={3} disabled={!editable} value={obs[f.key] ?? ''} maxLength={1000} onChange={(e) => { setObs({ ...obs, [f.key]: e.target.value }); setObsDirty(true) }} />
+                    : <input type={f.type === 'number' ? 'number' : 'text'} min={f.type === 'number' ? 0 : undefined} disabled={!editable} value={obs[f.key] ?? ''} maxLength={200} onChange={(e) => { setObs({ ...obs, [f.key]: e.target.value }); setObsDirty(true) }} />}
+                </label>)}</div>}
+              </div>
+            })}</div>
           </section>
+
         </>}
 
         {(discrepancies.data?.length ?? 0) > 0 && <section className="pd-card" aria-labelledby="in-disc-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">F</span><div><h2 id="in-disc-h">Differences found</h2><p>Both values are kept. You decide whether a difference is resolved, disclosed in the report, or escalated.</p></div></div></div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">D</span><div><h2 id="in-disc-h">Differences found</h2><p>Both values are kept. You decide whether a difference is resolved, disclosed in the report, or escalated.</p></div></div></div>
           <div className="in-disc">{discrepancies.data?.map((d) => <article key={d.id} className={`in-disc-item is-${d.status.toLowerCase()}`}>
             <div><b>{factLabel(d.fieldKey)}</b><p>{d.description}</p><small>{d.sourceA} ↔ {d.sourceB}</small>{d.resolutionNote && <blockquote>{d.resolutionNote}</blockquote>}</div>
             <span className={`pd-pill ${d.status === 'RESOLVED' || d.status === 'DISCLOSED' ? 'is-verified' : 'is-warn'}`}>{d.status.toLowerCase()}</span>
