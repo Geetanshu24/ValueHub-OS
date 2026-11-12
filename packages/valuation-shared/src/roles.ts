@@ -5,6 +5,7 @@ export const VALUATION_ROLES = [
   'INSPECTOR',
   'REVIEWER',
   'ACCOUNTS',
+  'DRAFTER',
 ] as const;
 
 export type ValuationRole = (typeof VALUATION_ROLES)[number];

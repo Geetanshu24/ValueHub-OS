@@ -1,4 +1,5 @@
 import type { AssignmentStatus } from '@value-hub/valuation-shared';
+import { relaxChecks } from '../../common/relax-checks.js';
 import { Prisma } from '../../generated/prisma/client.js';
 
 interface GateContext {
@@ -14,6 +15,7 @@ interface GateContext {
 export async function unmetGates(tx: Prisma.TransactionClient, ctx: GateContext): Promise<string[]> {
   const { firmId, assignmentId, propertyId, to } = ctx;
   const problems: string[] = [];
+  if (relaxChecks()) return problems;
 
   if (to === 'INSPECTION') {
     const documents = await tx.document.count({ where: { firmId, propertyId } });

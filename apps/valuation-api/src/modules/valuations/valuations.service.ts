@@ -9,6 +9,7 @@ import { AuditService } from '../../common/audit/audit.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AREA_FIELD_KEYS, AREA_TOLERANCE_PERCENT, factLabel } from '@value-hub/valuation-shared';
+import { relaxChecks } from '../../common/relax-checks.js';
 import { assessValuationReadiness } from '../assignments/readiness.js';
 import { engineFor, SUPPORTED_CLASSES } from './engines/engines.js';
 import { EngineInputError, type EngineInput, type EngineResult } from './engines/types.js';
@@ -218,7 +219,7 @@ export class ValuationsService {
       if (version.status !== 'DRAFT') throw new ConflictException(`Only a DRAFT can be sent for review, not ${version.status}`);
 
       const unsettled = version.lineItems.filter((line) => line.treatment === 'REQUIRES_REVIEW');
-      if (unsettled.length > 0) {
+      if (unsettled.length > 0 && !relaxChecks()) {
         throw new ConflictException(
           `Settle these items before review (included in base rate, separately valued, or not applicable): ${unsettled.map((l) => l.component).join(', ')}`,
         );

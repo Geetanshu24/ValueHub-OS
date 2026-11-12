@@ -10,10 +10,12 @@ import {
   Query,
   StreamableFile,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UPLOAD_LIMITS } from '@value-hub/valuation-shared';
+import { AssignmentAccessGuard } from '../../common/auth/assignment-access.guard.js';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import {
@@ -28,6 +30,7 @@ import { InspectionsService } from './inspections.service.js';
 
 const FIELD_ROLES = ['FIRM_ADMIN', 'VALUER', 'INSPECTOR'] as const;
 
+@UseGuards(AssignmentAccessGuard)
 @Controller()
 export class InspectionsController {
   constructor(private readonly inspections: InspectionsService) {}
@@ -37,14 +40,14 @@ export class InspectionsController {
     return this.inspections.calendar(user, query);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'INSPECTOR')
   @Post('assignments/:assignmentId/inspections')
   schedule(
     @CurrentUser() user: AuthUser,
     @Param('assignmentId', ParseUUIDPipe) assignmentId: string,
     @Body() dto: ScheduleInspectionDto,
   ) {
-    return this.inspections.schedule(user.firmId, user.userId, assignmentId, dto);
+    return this.inspections.schedule(user.firmId, user.userId, assignmentId, dto, user.role);
   }
 
   @Get('assignments/:assignmentId/inspections')

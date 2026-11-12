@@ -6,24 +6,29 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   StreamableFile,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UPLOAD_LIMITS } from '@value-hub/valuation-shared';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
+import { DocumentAccessGuard } from '../../common/auth/document-access.guard.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import {
   AddExtractedFieldDto,
   ListDocumentsQuery,
   ReviewFieldDto,
+  SetFieldValueDto,
   UpdateDocumentDto,
   UploadDocumentDto,
 } from './documents.dto.js';
 import { DocumentsService } from './documents.service.js';
 
+@UseGuards(DocumentAccessGuard)
 @Controller()
 export class DocumentsController {
   constructor(private readonly documents: DocumentsService) {}
@@ -50,7 +55,7 @@ export class DocumentsController {
     return this.documents.get(user.firmId, id);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER')
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
   @Patch('documents/:id')
   update(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateDocumentDto) {
     return this.documents.update(user.firmId, user.userId, id, dto);
@@ -66,7 +71,25 @@ export class DocumentsController {
     return this.documents.listFields(user.firmId, id);
   }
 
-  @Roles('FIRM_ADMIN', 'VALUER', 'INSPECTOR')
+  // The drafter's grid: one value per fact per document, saved cell by cell. An empty value clears the cell.
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
+  @Put('documents/:id/fields/:fieldKey')
+  setField(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('fieldKey') fieldKey: string,
+    @Body() dto: SetFieldValueDto,
+  ) {
+    return this.documents.setFieldValue(user.firmId, user.userId, id, fieldKey, dto.value, { page: dto.page, note: dto.note, unit: dto.unit });
+  }
+
+  @Roles('FIRM_ADMIN', 'VALUER', 'DRAFTER')
+  @Post('documents/:id/fields/:fieldKey/use')
+  useField(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Param('fieldKey') fieldKey: string) {
+    return this.documents.useFieldInReport(user.firmId, user.userId, id, fieldKey);
+  }
+
+  @Roles('FIRM_ADMIN', 'VALUER', 'INSPECTOR', 'DRAFTER')
   @Post('documents/:id/fields')
   addField(
     @CurrentUser() user: AuthUser,

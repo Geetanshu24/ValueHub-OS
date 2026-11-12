@@ -6,13 +6,13 @@ import Accounts from './pages/Accounts.tsx'
 import Admin from './pages/Admin.tsx'
 import AssignmentDetail from './pages/AssignmentDetail.tsx'
 import Assignments from './pages/Assignments.tsx'
+import CommandCentre from './pages/CommandCentre.tsx'
 import NewAssignment from './pages/NewAssignment.tsx'
 import PropertyDocuments from './pages/PropertyDocuments.tsx'
 import InspectionStep from './pages/InspectionStep.tsx'
 import ValuationStep from './pages/ValuationStep.tsx'
 import QualityReview from './pages/QualityReview.tsx'
 import SubmissionStep from './pages/SubmissionStep.tsx'
-import CommandCentre from './pages/CommandCentre.tsx'
 import DocumentDesk from './pages/DocumentDesk.tsx'
 import EvidenceVault from './pages/EvidenceVault.tsx'
 import InspectionWorkspace from './pages/InspectionWorkspace.tsx'
@@ -21,6 +21,10 @@ import RevisionDesk from './pages/RevisionDesk.tsx'
 import BankReport from './pages/BankReport.tsx'
 import ComparisonPage from './pages/Comparison.tsx'
 import RateBank from './pages/RateBank.tsx'
+import DraftWorkbench from './pages/DraftWorkbench.tsx'
+import Compare from './pages/Compare.tsx'
+import NewCase from './pages/NewCase.tsx'
+import ValuerCheck from './pages/ValuerCheck.tsx'
 import ReportStudio from './pages/ReportStudio.tsx'
 import ValuationWorkspace from './pages/ValuationWorkspace.tsx'
 import ResetPassword from './pages/ResetPassword.tsx'
@@ -40,10 +44,14 @@ export default function App() {
         <Route index element={<CommandCentre />} />
         <Route path="assignments" element={<Assignments />} />
         <Route path="assignments/new" element={<NewAssignment />} />
+        <Route path="assignments/new/quick" element={<NewCase />} />
         <Route path="assignments/:id" element={<AssignmentDetail />} />
         <Route path="assignments/:id/documents" element={<PropertyDocuments />} />
         <Route path="assignments/:id/inspection" element={<InspectionStep />} />
         <Route path="assignments/:id/valuation" element={<ValuationStep />} />
+        <Route path="assignments/:id/workbench" element={<DraftWorkbench />} />
+        <Route path="assignments/:id/compare" element={<Compare />} />
+        <Route path="assignments/:id/check" element={<ValuerCheck />} />
         <Route path="assignments/:id/bank-report" element={<BankReport />} />
         <Route path="assignments/:id/comparison" element={<ComparisonPage />} />
         <Route path="assignments/:id/review" element={<QualityReview />} />

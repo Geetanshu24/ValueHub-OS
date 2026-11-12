@@ -3,12 +3,10 @@ import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ASSIGNMENT_STATUS_LABELS,
-  ASSIGNMENT_TRANSITIONS,
   type AssignmentStatus,
 } from '@value-hub/valuation-shared'
 import { buttonClass, Card, ErrorText, errorMessage, formatDate, ghostButtonClass, inputClass } from '../components/ui.tsx'
 import { api } from '../lib/api.ts'
-import { nextActionFor } from '../components/WorkflowParts.tsx'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
 
@@ -22,12 +20,30 @@ interface Assignment {
   fee: string | null
   status: AssignmentStatus
   bank: { name: string }
-  branch: { name: string } | null
+  branch: { name: string; city: string | null; district: string | null; state: string | null } | null
+  clientPhone: string | null
+  borrowerName: string | null
+  receivedAt: string
+  assignedDrafter: { id: string; fullName: string } | null
+  assignedInspector: { id: string; fullName: string } | null
   property: { id: string; code: string; addressLine: string; propertyClass: string }
   assignedValuer: { id: string; fullName: string }
+  assignedAt: string
+  lifecycle?: { key: string; label: string }
+  acknowledgedAt: string | null
+  billing?: { status: 'none' | 'unpaid' | 'part_paid' | 'paid'; amount: number; outstanding: number; code: string | null }
 }
-interface Hold {
-  legalHold: boolean
+interface Step { key: string; title: string; who: string | null; state: 'todo' | 'doing' | 'done' | 'blocked'; detail: string }
+const STEP_LINK: Record<string, string> = { documents: '/documents', drafter: '/workbench', inspector: '/inspection', compare: '/compare', report: '/bank-report', check: '/check' }
+// Each person sees only the steps that are theirs.
+const STEPS_FOR: Record<string, string[]> = { DRAFTER: ['drafter', 'compare', 'report'], INSPECTOR: ['inspector'] }
+const needsPerson = (step: Step) => (step.key === 'drafter' || step.key === 'inspector') && !step.who
+interface AuditRow { id: string; action: string; actorName: string | null; createdAt: string; metadata: { from?: string; to?: string } | null }
+const ACTION_LABELS: Record<string, string> = {
+  'assignment.created': 'Case created and assigned',
+  'assignment.reallocated': 'Case given to a different valuer',
+  'assignment.acknowledged': 'Valuer opened the case pop-up',
+  'assignment.updated': 'Details edited',
 }
 interface Staff {
   id: string
@@ -40,16 +56,22 @@ export default function AssignmentDetail() {
   const { user } = useAuth()
   const assignment = useFetch<Assignment>(`/assignments/${id}`)
   const staff = useFetch<Staff[]>('/users/staff')
+  const progress = useFetch<{ steps: Step[]; rework: { id: string; kind: string; reason: string; dueDate: string | null; revision: number }[] }>(id ? `/assignments/${id}/bank-report/progress` : null)
+  const trail = useFetch<{ items: AuditRow[] }>(user?.role === 'FIRM_ADMIN' && id ? `/audit?entityType=Assignment&entityId=${id}&pageSize=50` : null)
   const [error, setError] = useState<string | null>(null)
   const [edit, setEdit] = useState<{ purpose: string; scope: string; dueDate: string; fee: string } | null>(null)
   const a = assignment.data
   const canEdit = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER'
+
+  const steps = (progress.data?.steps ?? []).filter((st) => !STEPS_FOR[user?.role ?? ''] || STEPS_FOR[user?.role ?? ''].includes(st.key))
 
   async function run(action: () => Promise<unknown>) {
     setError(null)
     try {
       await action()
       assignment.reload()
+      trail.reload()
+      progress.reload()
     } catch (caught) {
       setError(errorMessage(caught))
     }
@@ -71,42 +93,47 @@ export default function AssignmentDetail() {
 
   if (!a) return <ErrorText message={assignment.error} />
 
-  const links = [
-    ['Documents', '/documents'],
-    ['Inspection', '/inspections'],
-    ['Valuation', '/valuation'],
-    ['Report', '/reports'],
-    ['Revisions & queries', '/revisions'],
-    ['Accounts', '/accounts'],
-  ]
-
   return (
     <div>
       <Link to="/assignments" className="text-sm text-brand-700 hover:underline">← Assignments</Link>
-      <h1 className="mt-2 text-2xl font-bold">{a.code}</h1>
+      <h1 className="mt-2 text-2xl font-bold">{a.code} {a.lifecycle && <span className="pd-pill is-type" style={{ verticalAlign: 'middle' }}>{a.lifecycle.label}</span>}</h1>
       <p className="mb-4 text-base text-ink-soft">{a.bank.name}{a.branch ? ` · ${a.branch.name}` : ''} · {a.property.code} · {a.property.addressLine}</p>
       <ErrorText message={error ?? assignment.error} />
 
-      {nextActionFor(a.status, id) && (
-        <section className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 p-4 text-white">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider opacity-80">Next step</p>
-            <p className="text-lg font-bold">{nextActionFor(a.status, id)?.label}</p>
-          </div>
-          <Link to={nextActionFor(a.status, id)?.to ?? '#'} className="rounded-lg bg-white px-4 py-2 text-base font-semibold text-brand-700 hover:bg-brand-50">Continue →</Link>
-        </section>
-      )}
+      <Card title="Case briefing">
+        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+          <div><dt className="inline text-ink-soft">Case no.: </dt><dd className="inline font-semibold">{a.code}</dd></div>
+          <div><dt className="inline text-ink-soft">Logged in: </dt><dd className="inline">{new Date(a.receivedAt).toLocaleString('en-IN')}</dd></div>
+          <div><dt className="inline text-ink-soft">Client: </dt><dd className="inline">{a.borrowerName ?? '—'}</dd></div>
+          <div><dt className="inline text-ink-soft">Client phone: </dt><dd className="inline">{a.clientPhone ?? '—'}</dd></div>
+          <div><dt className="inline text-ink-soft">Bank: </dt><dd className="inline">{a.bank.name}</dd></div>
+          <div><dt className="inline text-ink-soft">Branch: </dt><dd className="inline">{a.branch ? [a.branch.name, a.branch.city, a.branch.district, a.branch.state].filter(Boolean).join(', ') : '—'}</dd></div>
+          <div className="sm:col-span-2"><dt className="inline text-ink-soft">Purpose: </dt><dd className="inline">{a.purpose}</dd></div>
+          {a.billing && a.billing.status !== 'none' && <div className="sm:col-span-2"><dt className="inline text-ink-soft">Bill: </dt><dd className="inline">{a.billing.code} · ₹{a.billing.amount.toLocaleString('en-IN')} · <b className={a.billing.status === 'paid' ? 'text-emerald-700' : 'text-amber-700'}>{a.billing.status === 'paid' ? 'paid' : a.billing.status === 'part_paid' ? `part paid, ₹${a.billing.outstanding.toLocaleString('en-IN')} due` : 'unpaid'}</b></dd></div>}
+          <div><dt className="inline text-ink-soft">Drafter: </dt><dd className="inline">{a.assignedDrafter?.fullName ?? '—'}</dd></div>
+          <div><dt className="inline text-ink-soft">Site inspector: </dt><dd className="inline">{a.assignedInspector?.fullName ?? '—'}</dd></div>
+        </dl>
+      </Card>
 
-      <Card title="Stage">
-        <p className="mb-3">Currently <strong>{ASSIGNMENT_STATUS_LABELS[a.status]}</strong>. Move to:</p>
-        <div className="flex flex-wrap gap-2">
-          {ASSIGNMENT_TRANSITIONS[a.status].map((next) => (
-            <button key={next} type="button" className={next === 'CANCELLED' ? ghostButtonClass : buttonClass} onClick={() => void run(() => api.patch(`/assignments/${id}/status`, { status: next }))}>
-              {ASSIGNMENT_STATUS_LABELS[next]}
-            </button>
+      {(progress.data?.rework ?? []).filter((r) => user?.role === 'DRAFTER' ? r.kind !== 'REINSPECTION' : user?.role === 'INSPECTOR' ? r.kind === 'REINSPECTION' : true).map((r) => (
+        <p key={r.id} className="pd-flag" role="alert"><b>{r.kind === 'DRAFTER' ? 'Returned for rework' : r.kind === 'REINSPECTION' ? 'New site visit requested' : 'More documents needed'} (round {r.revision}):</b> {r.reason}{r.dueDate ? ` · needed by ${formatDate(r.dueDate)}` : ''}</p>
+      ))}
+
+      <Card title="Where this case stands">
+        <ol className="cs-list">
+          {steps.map((step) => (
+            <li key={step.key} className={`cs-step is-${needsPerson(step) ? 'alert' : step.state === 'blocked' ? 'wait' : step.state}`}>
+              <span className="cs-dot" aria-hidden="true">{step.state === 'done' ? '✓' : step.state === 'doing' ? '…' : needsPerson(step) ? '!' : '○'}</span>
+              <div className="cs-text">
+                <b>{step.title}</b>
+                <small>{step.who ? `${step.who} · ` : ''}{step.detail}</small>
+              </div>
+              {STEP_LINK[step.key] && (needsPerson(step) && canEdit
+                ? <button type="button" className="pd-btn is-ghost" onClick={() => document.getElementById('team-card')?.scrollIntoView({ behavior: 'smooth' })}>Choose</button>
+                : <Link to={`/assignments/${id}${STEP_LINK[step.key]}`} className={`pd-btn ${step.state === 'doing' || step.state === 'todo' ? 'is-primary' : 'is-ghost'}`}>{step.state === 'done' ? 'View' : 'Open'}</Link>)}
+            </li>
           ))}
-          {ASSIGNMENT_TRANSITIONS[a.status].length === 0 && <span className="text-ink-soft">No further moves.</span>}
-        </div>
+        </ol>
       </Card>
 
       <Card title="Details">
@@ -126,6 +153,7 @@ export default function AssignmentDetail() {
             <div><dt className="inline text-ink-soft">Due: </dt><dd className="inline">{formatDate(a.dueDate)}</dd></div>
             <div><dt className="inline text-ink-soft">Fee: </dt><dd className="inline">{a.fee ? `₹ ${Number(a.fee).toLocaleString('en-IN')}` : '—'}</dd></div>
             <div><dt className="inline text-ink-soft">Valuer: </dt><dd className="inline">{a.assignedValuer.fullName}</dd></div>
+            <div><dt className="inline text-ink-soft">Assigned: </dt><dd className="inline">{new Date(a.assignedAt).toLocaleString('en-IN')} · {a.acknowledgedAt ? `seen ${new Date(a.acknowledgedAt).toLocaleString('en-IN')}` : <b className="text-amber-700">not seen yet</b>}</dd></div>
           </dl>
         )}
         {!edit && canEdit && (
@@ -134,6 +162,27 @@ export default function AssignmentDetail() {
           </button>
         )}
       </Card>
+
+      {canEdit && (
+        <div id="team-card"><Card title="Team on this case">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-sm">Drafter
+              <select className={inputClass} aria-label="Drafter" value={a.assignedDrafter?.id ?? ''} onChange={(e) => e.target.value && void run(() => api.patch(`/assignments/${id}`, { assignedDrafterId: e.target.value }))}>
+                <option value="">Not assigned</option>
+                {staff.data?.filter((s) => s.role === 'DRAFTER').map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+              </select>
+              {staff.data && !staff.data.some((s) => s.role === 'DRAFTER') && <small className="nc-hint">No drafter yet. The owner adds one in Administration → Users with the role Drafter.</small>}
+            </label>
+            <label className="text-sm">Site inspector
+              <select className={inputClass} aria-label="Site inspector" value={a.assignedInspector?.id ?? ''} onChange={(e) => e.target.value && void run(() => api.patch(`/assignments/${id}`, { assignedInspectorId: e.target.value }))}>
+                <option value="">Not assigned</option>
+                {staff.data?.filter((s) => s.role === 'INSPECTOR' || s.role === 'VALUER').map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}
+              </select>
+            </label>
+          </div>
+        </Card>
+        </div>
+      )}
 
       {user?.role === 'FIRM_ADMIN' && (
         <Card title="Reallocate">
@@ -144,28 +193,14 @@ export default function AssignmentDetail() {
       )}
 
       {user?.role === 'FIRM_ADMIN' && (
-        <Card title="Legal hold">
-          <p className="mb-2 text-sm text-ink-soft">A record on legal hold is kept out of any retention review until released. Both actions need a reason and are logged.</p>
-          <button
-            type="button"
-            className={ghostButtonClass}
-            onClick={() => {
-              const reason = window.prompt('Reason for placing this record on legal hold')?.trim()
-              if (reason) void run(() => api.post<Hold>(`/assignments/${id}/legal-hold`, { reason }))
-            }}
-          >
-            Place on legal hold
-          </button>{' '}
-          <button
-            type="button"
-            className={ghostButtonClass}
-            onClick={() => {
-              const reason = window.prompt('Reason for releasing the legal hold')?.trim()
-              if (reason) void run(() => api.post<Hold>(`/assignments/${id}/legal-hold/release`, { reason }))
-            }}
-          >
-            Release hold
-          </button>
+        <Card title="Activity">
+          {!trail.data ? <p className="text-sm text-ink-soft">Loading…</p> : trail.data.items.length === 0 ? <p className="text-sm text-ink-soft">Nothing recorded yet.</p> : (
+            <ol className="space-y-1 text-sm">
+              {trail.data.items.map((row) => (
+                <li key={row.id}><span className="text-ink-soft">{new Date(row.createdAt).toLocaleString('en-IN')}</span> · {ACTION_LABELS[row.action] ?? (row.action === 'assignment.status_changed' ? `Moved to ${ASSIGNMENT_STATUS_LABELS[row.metadata?.to as AssignmentStatus] ?? row.metadata?.to ?? 'a new stage'}` : row.action)}{row.actorName ? ` · ${row.actorName}` : ''}</li>
+              ))}
+            </ol>
+          )}
         </Card>
       )}
 
@@ -175,12 +210,12 @@ export default function AssignmentDetail() {
           <Link to={`/assignments/${id}/inspection`} className={ghostButtonClass}>Site Inspection</Link>
           <Link to={`/assignments/${id}/comparison`} className={ghostButtonClass}>Documents vs Site</Link>
           <Link to={`/assignments/${id}/valuation`} className={ghostButtonClass}>Valuation</Link>
+          <Link to={`/assignments/${id}/workbench`} className={ghostButtonClass}>Drafter workbench</Link>
+          <Link to={`/assignments/${id}/compare`} className={ghostButtonClass}>Compare (documents vs site)</Link>
+          <Link to={`/assignments/${id}/check`} className={ghostButtonClass}>Valuer check &amp; send</Link>
           <Link to={`/assignments/${id}/bank-report`} className={ghostButtonClass}>Bank report (Word / PDF)</Link>
           <Link to={`/assignments/${id}/review`} className={ghostButtonClass}>Quality Review</Link>
           <Link to={`/assignments/${id}/submission`} className={ghostButtonClass}>Approval &amp; Submission</Link>
-          {links.filter(([, path]) => path !== '/documents' && path !== '/inspections' && path !== '/valuation' && path !== '/reports').map(([label, path]) => (
-            <Link key={path} to={`${path}?assignment=${id}`} className={ghostButtonClass}>{label}</Link>
-          ))}
         </div>
       </Card>
       <Timeline assignmentId={id} />

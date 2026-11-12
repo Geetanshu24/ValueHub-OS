@@ -10,6 +10,11 @@ export const DOCUMENT_TYPES = [
   'WATER_BILL',
   'MAGISTRATE_CERTIFICATE',
   'PATWARI_REPORT',
+  'LAYOUT_PLAN',
+  'COMPLETION_CERTIFICATE',
+  'ELECTRICITY_BILL',
+  'PROPERTY_TAX',
+  'REGISTRY_PAPERS',
   'OTHER',
 ] as const;
 
@@ -26,6 +31,11 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   WATER_BILL: 'Water bill',
   MAGISTRATE_CERTIFICATE: 'Magistrate certificate',
   PATWARI_REPORT: 'Patwari report',
+  LAYOUT_PLAN: 'Layout plan',
+  COMPLETION_CERTIFICATE: 'Completion certificate',
+  ELECTRICITY_BILL: 'Electricity bill',
+  PROPERTY_TAX: 'Property tax',
+  REGISTRY_PAPERS: 'Registry papers',
   OTHER: 'Other',
 };
 

@@ -30,6 +30,10 @@ export class CreateAssignmentDto {
   @IsOptional() @IsUUID() branchId?: string;
   @IsUUID() propertyId!: string;
   @IsUUID() assignedValuerId!: string;
+  // The client who asked for the work, and who the valuer hands the case to.
+  @IsOptional() @IsString() @MaxLength(30) clientPhone?: string;
+  @IsOptional() @IsUUID() assignedDrafterId?: string;
+  @IsOptional() @IsUUID() assignedInspectorId?: string;
 
   @IsString()
   @MinLength(2)
@@ -57,7 +61,6 @@ export class CreateAssignmentDto {
   @IsOptional() @IsString() @MaxLength(120) billingArrangement?: string;
   @IsOptional() @IsString() @MaxLength(1000) specialInstructions?: string;
   @IsOptional() @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(100_000_000_000) approxAreaSqm?: number;
-  @IsOptional() @IsUUID() plannedInspectorId?: string;
 
   // The earlier assignment these details were started from (same property).
   @IsOptional() @IsUUID() reusedFromId?: string;
@@ -101,6 +104,9 @@ export class UpdateAssignmentDto {
   @IsOptional() @IsString() @MaxLength(200) borrowerName?: string;
   // Reallocation; FIRM_ADMIN only.
   @IsOptional() @IsUUID() assignedValuerId?: string;
+  @IsOptional() @IsString() @MaxLength(30) clientPhone?: string;
+  @IsOptional() @IsUUID() assignedDrafterId?: string;
+  @IsOptional() @IsUUID() assignedInspectorId?: string;
 
   @IsOptional()
   @Type(() => Number)

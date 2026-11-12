@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { AlertTriangle, CalendarClock, ListTodo, PieChart, Plus, Users } from 'lucide-react'
 import { ASSIGNMENT_STATUS_LABELS, type AssignmentStatus } from '@value-hub/valuation-shared'
 import { nextActionFor } from '../components/WorkflowParts.tsx'
@@ -93,7 +93,13 @@ function Bars({ monthly }: { monthly: Overview['monthly'] }) {
   )
 }
 
-export default function CommandCentre() {
+// A drafter has no dashboard: their home is the list of cases given to them.
+export default function CommandCentreGate() {
+  const { user } = useAuth()
+  return user?.role === 'DRAFTER' ? <Navigate to="/assignments" replace /> : <CommandCentre />
+}
+
+function CommandCentre() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const canCreate = user?.role === 'FIRM_ADMIN' || user?.role === 'VALUER'

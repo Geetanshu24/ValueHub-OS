@@ -1,21 +1,23 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { AssignmentAccessGuard } from '../../common/auth/assignment-access.guard.js';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
 import { Roles } from '../../common/auth/roles.decorator.js';
 import { CreateAssignmentDto, ListAssignmentsQuery, UpdateAssignmentDto, UpdateStatusDto } from './assignments.dto.js';
 import { AssignmentsService } from './assignments.service.js';
 
+@UseGuards(AssignmentAccessGuard)
 @Controller('assignments')
 export class AssignmentsController {
   constructor(private readonly assignments: AssignmentsService) {}
 
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() query: ListAssignmentsQuery) {
-    return this.assignments.list(user.firmId, query);
+    return this.assignments.list(user.firmId, query, user);
   }
 
   @Get(':id')
   get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.assignments.get(user.firmId, id);
+    return this.assignments.get(user.firmId, id, user);
   }
 
   @Get(':id/readiness')

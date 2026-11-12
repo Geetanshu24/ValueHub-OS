@@ -10,7 +10,7 @@ const bankSelect = {
   id: true,
   name: true,
   createdAt: true,
-  branches: { select: { id: true, name: true, city: true }, orderBy: { name: 'asc' } },
+  branches: { select: { id: true, name: true, city: true, district: true, state: true }, orderBy: { name: 'asc' } },
 } satisfies Prisma.BankSelect;
 
 @Injectable()
@@ -52,7 +52,7 @@ export class BanksService {
       return await this.prisma.$transaction(async (tx) => {
         const branch = await tx.bankBranch.create({
           data: { ...dto, firmId, bankId },
-          select: { id: true, name: true, city: true, contactName: true, contactEmail: true, contactPhone: true },
+          select: { id: true, name: true, city: true, district: true, state: true, contactName: true, contactEmail: true, contactPhone: true },
         });
         await this.audit.record(
           { firmId, actorId, entityType: 'BankBranch', entityId: branch.id, action: 'branch.created' },
@@ -96,7 +96,7 @@ export class BanksService {
         const updated = await tx.bankBranch.update({
           where: { id: branchId },
           data: { ...dto },
-          select: { id: true, name: true, city: true, contactName: true, contactEmail: true, contactPhone: true },
+          select: { id: true, name: true, city: true, district: true, state: true, contactName: true, contactEmail: true, contactPhone: true },
         });
         await this.audit.record({ firmId, actorId, entityType: 'BankBranch', entityId: branchId, action: 'branch.updated' }, tx);
         return updated;

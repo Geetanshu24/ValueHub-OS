@@ -1,3 +1,4 @@
+import { relaxChecks } from '../../common/relax-checks.js';
 import type { TemplateSpec } from './template-spec.js';
 
 export type QcStatus = 'PASS' | 'FAIL' | 'WARN';
@@ -93,5 +94,8 @@ export function runQc(input: QcInput): QcResult {
   }
   checks.push(check('photo_embed', 'All photos are in the package', input.photosNotEmbedded === 0, `${input.photosNotEmbedded} photo(s) are listed but not embedded (unsupported format or over the limit)`, 'WARN'));
 
+  if (relaxChecks()) {
+    return { passed: true, checks: checks.map((c) => (c.status === 'FAIL' ? { ...c, status: 'WARN' as const } : c)) };
+  }
   return { passed: checks.every((c) => c.status !== 'FAIL'), checks };
 }

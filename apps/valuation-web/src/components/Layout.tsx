@@ -7,6 +7,8 @@ import LifecycleBar, { type Stage } from './shell/LifecycleBar.tsx'
 import { SearchModal, StageModal, TrailModal } from './shell/Modals.tsx'
 import { ToastProvider } from './shell/Toast.tsx'
 import { useActiveCase } from './shell/useActiveCase.ts'
+import AssignmentPopup from './AssignmentPopup.tsx'
+import PullToRefresh from './PullToRefresh.tsx'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
 
@@ -15,7 +17,7 @@ interface Reminder { type: string; assignmentId: string; ref: string; overdue: b
 
 const MODULES: Record<string, string> = {
   '/': 'Dashboard', '/assignments': 'Case Register', documents: 'Document Vault', inspection: 'Site Inspection', comparison: 'Comparison Engine', valuation: 'Draft Valuation',
-  review: 'Valuer Sign-Off', submission: 'Dispatch & Billing', 'bank-report': 'Bank Report', '/rate-bank': 'Market Rate Bank',
+  workbench: 'Drafter Workbench', compare: 'Compare', check: 'Valuer Check & Send', review: 'Valuer Sign-Off', submission: 'Dispatch & Billing', 'bank-report': 'Bank Report', '/rate-bank': 'Market Rate Bank',
 }
 const moduleName = (path: string) => {
   const step = /^\/assignments\/[^/]+\/([^/]+)/.exec(path)?.[1]
@@ -54,7 +56,9 @@ export default function Layout() {
   const [trail, setTrail] = useState(false)
   const isAdmin = user?.role === 'FIRM_ADMIN'
   const role = user?.role
-  const deskWork = role !== 'INSPECTOR' && role !== 'ACCOUNTS'
+  const deskWork = role !== 'INSPECTOR' && role !== 'ACCOUNTS' && role !== 'DRAFTER'
+  // The drafter and the valuer's own check-and-send flow sit beside the prototype's stages.
+  const teamWork = role !== 'INSPECTOR' && role !== 'ACCOUNTS'
   const current = life.data && life.data.case.id === caseId ? life.data : null
   const active = current?.stages.find((s) => s.n === current.active)
   const to = (step: string) => (caseId ? `/assignments/${caseId}/${step}` : '/assignments')
@@ -138,6 +142,11 @@ export default function Layout() {
 
               <Section>{current ? `Active Case (${current.case.code})` : 'Active Case'}</Section>
               <Item to={to('documents')} label="3. Document Vault" disabled={!caseId} badge={current && <span className="rounded bg-blue-500/20 px-1.5 font-mono text-[9px] text-blue-300">{current.counts.documents}</span>}><FileCheck2 className={icon} /></Item>
+{teamWork && <>
+              <Item to={to('workbench')} label="Drafter Workbench" disabled={!caseId}><Files className={icon} /></Item>
+              <Item to={to('compare')} label="Compare (docs vs site)" disabled={!caseId}><Scale className={icon} /></Item>
+              {role !== 'DRAFTER' && <Item to={to('check')} label="Valuer Check & Send" disabled={!caseId}><FileCheck2 className={icon} /></Item>}
+</>}
 {role !== 'ACCOUNTS' && <>
               <Item to={to('inspection')} label="4. Site Inspection" disabled={!caseId} badge={<span className="rounded bg-green-500/20 px-1.5 text-[9px] text-green-300">GPS</span>}><HardHat className={icon} /></Item>
 </>}
@@ -204,7 +213,8 @@ export default function Layout() {
               )}
             </div>
             {current && <LifecycleBar stages={current.stages} blocked={current.counts.openDifferences > 0} onPick={setStage} />}
-            <div className="pd-page p-6"><Outlet /></div>
+            <AssignmentPopup />
+            <PullToRefresh><div className="pd-page p-6"><Outlet /></div></PullToRefresh>
           </main>
         </div>
       </div>

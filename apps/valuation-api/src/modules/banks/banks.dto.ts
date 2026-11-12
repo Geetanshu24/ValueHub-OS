@@ -20,6 +20,16 @@ export class CreateBranchDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(80)
+  district?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  state?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(120)
   contactName?: string;
 
@@ -43,6 +53,8 @@ export class UpdateBankDto {
 export class UpdateBranchDto {
   @IsOptional() @IsString() @MinLength(2) @MaxLength(120) name?: string;
   @IsOptional() @IsString() @MaxLength(80) city?: string;
+  @IsOptional() @IsString() @MaxLength(80) district?: string;
+  @IsOptional() @IsString() @MaxLength(80) state?: string;
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;
   @IsOptional() @IsEmail() contactEmail?: string;
   @IsOptional() @IsString() @MaxLength(30) contactPhone?: string;

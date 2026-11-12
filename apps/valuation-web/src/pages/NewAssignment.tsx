@@ -8,7 +8,7 @@ import { ErrorText, errorMessage, formatInr, inputClass } from '../components/ui
 import { api, type Paginated } from '../lib/api.ts'
 import { useFetch } from '../lib/useFetch.ts'
 
-interface Bank { id: string; name: string; branches: { id: string; name: string }[] }
+interface Bank { id: string; name: string; branches: { id: string; name: string; city?: string | null; district?: string | null; state?: string | null }[] }
 interface Staff { id: string; fullName: string; role: string }
 interface Property { id: string; code: string; addressLine: string; propertyClass: PropertyClass; locality?: string | null; district?: string | null; state?: string | null }
 interface Assignment { id: string; code: string; purpose: string; dueDate: string; status: string; bank: { name: string }; property: { code: string; addressLine: string } }
@@ -46,6 +46,15 @@ const SLA: Record<AssignmentPriority, string> = { LOW: 'Relaxed', NORMAL: 'Norma
 const AREA_UNITS = { 'Sq.Yd': 0.83612736, 'Sq.Ft': 0.09290304, 'Sq.M': 1, Acre: 4046.8564224 } as const
 type AreaUnit = keyof typeof AREA_UNITS
 
+// A first guess at what a file is from its name; the person can change it.
+const TYPE_GUESSES: [RegExp, DocumentType][] = [
+  [/layout/i, 'LAYOUT_PLAN'], [/completion/i, 'COMPLETION_CERTIFICATE'], [/occupation|\boc\b/i, 'OCCUPATION_CERTIFICATE'],
+  [/shajra|sajra|sejra/i, 'SHAJRA_PLAN'], [/jamabandi|jamabandhi|khasra|khatauni|revenue/i, 'REVENUE_RECORD'], [/magistrate/i, 'MAGISTRATE_CERTIFICATE'],
+  [/patwari/i, 'PATWARI_REPORT'], [/electric|bijli/i, 'ELECTRICITY_BILL'], [/property.?tax|house.?tax/i, 'PROPERTY_TAX'], [/water/i, 'WATER_BILL'],
+  [/registry|regd/i, 'REGISTRY_PAPERS'], [/deed|conveyance|sale/i, 'SALE_DEED'], [/approved|sanction|map|plan/i, 'APPROVED_PLAN'],
+]
+const guessType = (name: string): DocumentType => TYPE_GUESSES.find(([pattern]) => pattern.test(name))?.[1] ?? 'BANK_INSTRUCTION'
+
 // A sector or locality in the address is the most useful first search term.
 const guessLocality = (address: string) => /sector\s*\d+[a-z]?/i.exec(address)?.[0] ?? ''
 const confidenceLabel = (guess?: Guess<unknown>) => (!guess ? 'Not found' : guess.confidence >= 0.55 ? 'Likely' : 'Check')
@@ -71,14 +80,18 @@ export default function NewAssignment() {
   const [previous, setPrevious] = useState<Assignment[]>([])
   const [property, setProperty] = useState(blankProperty)
   const [form, setForm] = useState({ bankId: '', branchId: '', assignedValuerId: '', purpose: PURPOSES[0], valuationDate: dateToday, instructionDate: dateToday, dueDate: dueDefault, priority: 'NORMAL' as AssignmentPriority, borrowerName: '', fee: '' })
-  const [extra, setExtra] = useState({ officer: '', officerMobile: '', loanAccount: '', scope: [SCOPE_ITEMS[0]] as string[], father: '', mobile: '', email: '', areaValue: '', areaUnit: 'Sq.Yd' as AreaUnit, plannedInspectorId: '', billing: BILLING[1], special: '', lat: '', lon: '' })
-  const [documentType, setDocumentType] = useState<DocumentType>('BANK_INSTRUCTION')
+  const [extra, setExtra] = useState({ officer: '', officerMobile: '', loanAccount: '', scope: [SCOPE_ITEMS[0]] as string[], father: '', mobile: '', email: '', areaValue: '', areaUnit: 'Sq.Yd' as AreaUnit, inspectorId: '', drafterId: '', billing: BILLING[1], special: '', lat: '', lon: '' })
+  // Each file has its own type, guessed from its name and changeable.
+  const [fileTypes, setFileTypes] = useState<Record<string, DocumentType>>({})
+  const fileKey = (file: File) => `${file.name}-${file.size}`
+  const typeOf = (file: File): DocumentType => fileTypes[fileKey(file)] ?? guessType(file.name)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [created, setCreated] = useState<{ id: string; code: string; uploaded: number; failed: string[] } | null>(null)
   const [draft, setDraft] = useState(readDraft)
   const branches = banks.data?.items.find((bank) => bank.id === form.bankId)?.branches ?? []
   const validStaff = useMemo(() => staff.data?.filter((person) => person.role === 'VALUER' || person.role === 'FIRM_ADMIN') ?? [], [staff.data])
+  const drafters = useMemo(() => staff.data?.filter((person) => person.role === 'DRAFTER') ?? [], [staff.data])
   const inspectors = useMemo(() => staff.data?.filter((person) => person.role === 'INSPECTOR' || person.role === 'VALUER' || person.role === 'FIRM_ADMIN') ?? [], [staff.data])
   const bankName = (id: string) => banks.data?.items.find((bank) => bank.id === id)?.name
   const setE = <K extends keyof typeof extra>(key: K, value: (typeof extra)[K]) => setExtra((current) => ({ ...current, [key]: value }))
@@ -189,11 +202,11 @@ export default function NewAssignment() {
         ...(text(extra.loanAccount) && { loanAccountNo: extra.loanAccount.trim() }), ...(text(extra.father) && { applicantFatherName: extra.father.trim() }),
         ...(text(extra.mobile) && { applicantMobile: extra.mobile.trim() }), ...(text(extra.email) && { applicantEmail: extra.email.trim() }),
         billingArrangement: extra.billing, ...(text(extra.special) && { specialInstructions: extra.special.trim() }),
-        ...(areaSqm > 0 && { approxAreaSqm: areaSqm }), ...(extra.plannedInspectorId && { plannedInspectorId: extra.plannedInspectorId }),
+        ...(areaSqm > 0 && { approxAreaSqm: areaSqm }), ...(extra.inspectorId && { assignedInspectorId: extra.inspectorId }), ...(extra.drafterId && { assignedDrafterId: extra.drafterId }), ...(extra.mobile.trim() && { clientPhone: extra.mobile.trim() }),
       })
       const failed: string[] = []
       for (const file of files) {
-        const data = new FormData(); data.set('type', documentType); data.set('source', source); data.set('assignmentId', assignment.id); data.set('file', file)
+        const data = new FormData(); data.set('type', typeOf(file)); data.set('source', source); data.set('assignmentId', assignment.id); data.set('file', file)
         try { await api.upload(`/properties/${propertyId}/documents`, data) } catch (caught) { failed.push(`${file.name}: ${errorMessage(caught)}`) }
       }
       discardDraft()
@@ -277,8 +290,9 @@ export default function NewAssignment() {
     </>}
 
     {step === 3 && <section className="intake-panel intake-form-panel"><div className="intake-panel-heading"><div><h3>Assign staff &amp; schedule</h3><p>Who prepares the documents, who visits the site, and by when.</p></div><span className="intake-form-step">ASSIGN</span></div><div className="intake-fields-grid">
-      <label>Assign drafter (document layer) *<select className={inputClass} value={form.assignedValuerId} onChange={(e) => setForm({ ...form, assignedValuerId: e.target.value })}><option value="">Choose…</option>{validStaff.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}</select></label>
-      <label>Assign inspector (site layer)<select className={inputClass} value={extra.plannedInspectorId} onChange={(e) => setE('plannedInspectorId', e.target.value)}><option value="">Decide later</option>{inspectors.map((p) => <option key={p.id} value={p.id}>{p.fullName} ({p.role.toLowerCase().replace('_', ' ')})</option>)}</select></label>
+      <label>Valuer (signs the report) *<select className={inputClass} value={form.assignedValuerId} onChange={(e) => setForm({ ...form, assignedValuerId: e.target.value })}><option value="">Choose…</option>{validStaff.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}</select></label>
+      <label>Assign drafter (document layer)<select className={inputClass} value={extra.drafterId} onChange={(e) => setE('drafterId', e.target.value)}><option value="">Decide later</option>{drafters.map((p) => <option key={p.id} value={p.id}>{p.fullName}</option>)}</select></label>
+      <label>Assign inspector (site layer)<select className={inputClass} value={extra.inspectorId} onChange={(e) => setE('inspectorId', e.target.value)}><option value="">Decide later</option>{inspectors.map((p) => <option key={p.id} value={p.id}>{p.fullName} ({p.role.toLowerCase().replace('_', ' ')})</option>)}</select></label>
       <label>Due date *<input className={inputClass} type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></label>
       <label>Valuation date *<input className={inputClass} type="date" value={form.valuationDate} onChange={(e) => setForm({ ...form, valuationDate: e.target.value })} /></label>
       <label>Priority level<select className={inputClass} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as AssignmentPriority })}>{ASSIGNMENT_PRIORITIES.map((value) => <option key={value} value={value}>{SLA[value]}</option>)}</select></label>
@@ -291,12 +305,13 @@ export default function NewAssignment() {
       <section className="intake-summary-card intake-confirm"><div className="intake-confirm-head"><span className="intake-summary-label">CASE INTAKE SUMMARY CARD</span><em>Ready for creation</em></div>
         <dl><div><dt>Client / applicant</dt><dd>{form.borrowerName || '—'}</dd></div><div><dt>Bank / branch</dt><dd>{bankName(form.bankId) ?? '—'}{branches.find((b) => b.id === form.branchId) ? ` (${branches.find((b) => b.id === form.branchId)?.name})` : ''}</dd></div>
           <div className="is-wide"><dt>Property</dt><dd>{(selected?.addressLine ?? property.addressLine) || '—'}{areaSqm > 0 ? ` (${extra.areaValue} ${extra.areaUnit})` : ''}</dd></div>
-          <div><dt>Assigned drafter</dt><dd>{person(form.assignedValuerId)}</dd></div><div><dt>Assigned inspector</dt><dd>{extra.plannedInspectorId ? person(extra.plannedInspectorId) : 'Decide later'}</dd></div>
+          <div><dt>Valuer</dt><dd>{person(form.assignedValuerId)}</dd></div><div><dt>Assigned drafter</dt><dd>{extra.drafterId ? person(extra.drafterId) : 'Decide later'}</dd></div><div><dt>Assigned inspector</dt><dd>{extra.inspectorId ? person(extra.inspectorId) : 'Decide later'}</dd></div>
           <div><dt>Agreed fee</dt><dd>{form.fee ? `₹ ${formatInr(form.fee)}` : 'Bank default'}</dd></div><div><dt>Target due date</dt><dd>{dueText}</dd></div>
           <div><dt>Purpose</dt><dd>{form.purpose}</dd></div><div><dt>Priority</dt><dd>{SLA[form.priority]}</dd></div></dl>
         <div className="intake-governance"><b>ValuerPro core governance rule</b><p>Creating this case sets up separate document and site evidence layers. Staff cannot overwrite each other’s field observations.</p></div>
       </section>
-      {files.length > 0 && <section className="intake-panel intake-doc-type"><div><b>Classify instruction files</b><small>{files.length} file{files.length === 1 ? '' : 's'} will be stored once the case is created.</small></div><select className={inputClass} value={documentType} onChange={(e) => setDocumentType(e.target.value as DocumentType)}>{DOCUMENT_TYPES.map((value) => <option key={value} value={value}>{DOCUMENT_TYPE_LABELS[value]}</option>)}</select></section>}
+      {files.length > 0 && <section className="intake-panel intake-doc-type"><div><b>What each file is</b><small>Guessed from the file name. Change it if it is wrong; the files are stored once the case is created.</small></div>
+        {files.map((file) => <div key={fileKey(file)} className="intake-file-type"><span title={file.name}>{file.name}</span><select className={inputClass} value={typeOf(file)} onChange={(e) => setFileTypes({ ...fileTypes, [fileKey(file)]: e.target.value as DocumentType })}>{DOCUMENT_TYPES.map((value) => <option key={value} value={value}>{DOCUMENT_TYPE_LABELS[value]}</option>)}</select></div>)}</section>}
     </>}
 
     <footer className="intake-footer">

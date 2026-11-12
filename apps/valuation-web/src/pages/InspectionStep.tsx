@@ -112,6 +112,23 @@ export default function InspectionStep() {
   const visit = list.find((v) => v.id === pick) ?? list.find((v) => !locked(v.status)) ?? list[0] ?? null
   const isLocked = visit ? locked(visit.status) : false
   const editable = !!visit && !isLocked && canField
+  // An inspector given the case starts their own visit; nobody has to schedule it for them.
+  const rework = useFetch<{ rework: { id: string; kind: string; reason: string; dueDate: string | null }[] }>(id ? `/assignments/${id}/bank-report/progress` : null)
+  const reinspect = rework.data?.rework.find((r) => r.kind === 'REINSPECTION')
+  const startMine = () => void run(async () => {
+    const made = await api.post<{ id: string }>(`/assignments/${id}/inspections`, { inspectorId: user!.id, visitedAt: new Date().toISOString() })
+    setPick(made.id)
+  }, 'Visit started. Fill in what you find on site.')
+  const autoStarted = useRef(false)
+  const autoPossible = !!user && (user.role === 'INSPECTOR' || (canPlan && !!a?.assignedInspector?.id))
+  useEffect(() => {
+    if (autoStarted.current || !a || !user || !visits.data || visits.data.length > 0 || !autoPossible) return
+    autoStarted.current = true
+    const inspectorId = user.role === 'INSPECTOR' ? user.id : a.assignedInspector!.id
+    api.post<{ id: string }>(`/assignments/${id}/inspections`, { inspectorId, visitedAt: new Date().toISOString() })
+      .then((made) => { setPick(made.id); visits.reload() })
+      .catch((caught: unknown) => setError(errorMessage(caught)))
+  }, [a, user, visits.data, autoPossible, id]) // eslint-disable-line react-hooks/exhaustive-deps
   const reloadAll = () => { assignment.reload(); context.reload(); visits.reload(); discrepancies.reload() }
 
   // Arriving here with the documents in place moves the assignment on to inspection.
@@ -234,12 +251,14 @@ export default function InspectionStep() {
       <div className="brief-grid"><div><small>Property as per documents</small><b>{a.property.addressLine}</b></div>
         <div><small>Documented areas</small><b>{(context.data?.documentedAreas ?? []).length ? (context.data?.documentedAreas ?? []).map((d) => `${factLabel(d.fieldKey)}: ${fmt(d.value)} sq m`).join(' · ') : 'None verified yet'}</b></div>
         <div><small>Borrower</small><b>{a.borrowerName ?? 'Not recorded'}</b></div><div><small>Bank</small><b>{a.bank.name}</b></div></div></div>
+    {reinspect && <div className="pd-flag" role="alert"><b>The valuer asked for a new site visit:</b> {reinspect.reason}{reinspect.dueDate ? ` · needed by ${new Date(reinspect.dueDate).toLocaleDateString('en-IN')}` : ''}
+      {user?.role === 'INSPECTOR' && (!visit || isLocked) && <> <button type="button" className="pd-btn is-primary" disabled={busy} onClick={startMine}>Start the new visit</button></>}</div>}
     <ErrorText message={error ?? assignment.error ?? context.error ?? visits.error ?? discrepancies.error} />
 
     <div className="pd-grid">
       <div className="pd-main">
         <section className="pd-card" aria-labelledby="in-visits-h">
-          <div className="pd-card-head"><div><span className="pd-step-tag">⛑</span><div><h2 id="in-visits-h">Site visits</h2><p>Plan who goes and when. Each visit has its own measurements, photos and notes.</p></div></div>{canPlan && !scheduling && <button type="button" className="pd-btn is-primary" onClick={() => { setScheduling(true); setPlan({ inspectorId: a.plannedInspector?.id ?? (a.assignedValuer ? staff.data?.find((s) => s.fullName === a.assignedValuer.fullName)?.id ?? '' : ''), visitedAt: '' }) }}>＋ Schedule a visit</button>}</div>
+          <div className="pd-card-head"><div><span className="pd-step-tag">⛑</span><div><h2 id="in-visits-h">Site visits</h2><p>Plan who goes and when. Each visit has its own measurements, photos and notes.</p></div></div>{canPlan && !scheduling && <button type="button" className="pd-btn is-primary" onClick={() => { setScheduling(true); setPlan({ inspectorId: a.assignedInspector?.id ?? (a.assignedValuer ? staff.data?.find((s) => s.fullName === a.assignedValuer.fullName)?.id ?? '' : ''), visitedAt: '' }) }}>＋ Schedule a visit</button>}</div>
           {scheduling && <form className="in-inline-form" onSubmit={schedule}>
             <label>Who will go<select required value={plan.inspectorId} onChange={(e) => setPlan({ ...plan, inspectorId: e.target.value })}><option value="">Choose…</option>{staff.data?.filter((s) => s.role === 'INSPECTOR' || s.role === 'VALUER').map((s) => <option key={s.id} value={s.id}>{s.fullName} ({s.role.toLowerCase()})</option>)}</select></label>
             <label>Date &amp; time<input type="datetime-local" required value={plan.visitedAt} onChange={(e) => setPlan({ ...plan, visitedAt: e.target.value })} /></label>

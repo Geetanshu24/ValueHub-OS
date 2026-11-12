@@ -1,14 +1,14 @@
 import { Link } from 'react-router-dom'
+import { formatDate } from './ui.tsx'
 import {
   ASSIGNMENT_STATUS_LABELS,
   type AssignmentPriority, type AssignmentStatus, type IntakeSource, type PropertyClass,
 } from '@value-hub/valuation-shared'
 import type { ReactNode } from 'react'
-import { formatDate } from './ui.tsx'
 
 export interface AssignmentHead {
   id: string; code: string; purpose: string; fee?: string | null; dueDate: string; status: AssignmentStatus; priority: AssignmentPriority; borrowerName: string | null; intakeSource: IntakeSource
-  bank: { name: string }; assignedValuer: { fullName: string }; plannedInspector?: { id: string; fullName: string } | null; property: { id: string; code: string; addressLine: string; propertyClass: PropertyClass }
+  bank: { name: string }; assignedValuer: { fullName: string }; assignedInspector?: { id: string; fullName: string } | null; property: { id: string; code: string; addressLine: string; propertyClass: PropertyClass }
 }
 export interface ReadinessItem { key: string; label: string; state: 'done' | 'todo' | 'warn'; detail: string; blocking: boolean }
 export interface Readiness { items: ReadinessItem[]; done: number; total: number; canProceed: boolean; complete: boolean }
