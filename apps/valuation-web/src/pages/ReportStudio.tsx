@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { isSupportedBank } from '@value-hub/valuation-shared'
 import Collapsible from '../components/Collapsible.tsx'
 import { buttonClass, Card, ErrorText, errorMessage, formatDate, ghostButtonClass, inputClass } from '../components/ui.tsx'
 import { api, openFile, type Paginated } from '../lib/api.ts'
@@ -146,7 +147,7 @@ function TemplateAdmin({ onChange }: { onChange: () => void }) {
           <input className={inputClass} type="date" aria-label="Effective from" value={form.effectiveFrom} onChange={(e) => setForm({ ...form, effectiveFrom: e.target.value })} />
           <select className={inputClass} aria-label="Bank" value={form.bankId} onChange={(e) => setForm({ ...form, bankId: e.target.value })}>
             <option value="">Any bank</option>
-            {banks.data?.items.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            {banks.data?.items.filter((b) => isSupportedBank(b.name)).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
           <select className={inputClass} aria-label="Property class" value={form.propertyClass} onChange={(e) => setForm({ ...form, propertyClass: e.target.value })}>
             <option value="">Any class</option>

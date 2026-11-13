@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth.tsx'
 import NewAssignment from './NewAssignment.tsx'
 import { AlertCircle, Download, ExternalLink, FileText, Plus, Search, X } from 'lucide-react'
-import { ASSIGNMENT_STATUSES, ASSIGNMENT_STATUS_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS, type AssignmentStatus, type PropertyClass } from '@value-hub/valuation-shared'
+import { ASSIGNMENT_STATUSES, ASSIGNMENT_STATUS_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS, isSupportedBank, type AssignmentStatus, type PropertyClass } from '@value-hub/valuation-shared'
 import Pager from '../components/Pager.tsx'
 import { ErrorText, formatDate, formatInr } from '../components/ui.tsx'
 import { useToast } from '../components/shell/Toast.tsx'
@@ -48,7 +48,7 @@ export default function Assignments() {
   const statusParam = params.get('status')
   const status = isStatus(statusParam) ? statusParam : ''
   const overdue = params.get('overdue') === 'true'
-  const banks = useFetch<{ items: Bank[] }>('/banks?pageSize=100').data?.items
+  const banks = useFetch<{ items: Bank[] }>('/banks?pageSize=100').data?.items.filter((b) => isSupportedBank(b.name))
   const staff = useFetch<Staff[]>('/users/staff').data
   const { data, error, loading } = useList<Row>('/assignments', { page, pageSize: 25, status: status || undefined, overdue: overdue ? 'true' : undefined, q: search.trim() || undefined, bankId: bank || undefined, propertyClass: type || undefined, assignedValuerId: assignee || undefined })
 

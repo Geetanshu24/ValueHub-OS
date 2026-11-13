@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { VALUATION_ROLES, type ValuationRole } from '@value-hub/valuation-shared'
+import { VALUATION_ROLES, isSupportedBank, type ValuationRole } from '@value-hub/valuation-shared'
 import { buttonClass, Card, ErrorText, errorMessage, Field, formatDate, ghostButtonClass, inputClass, PageHeader } from '../components/ui.tsx'
 import Pager from '../components/Pager.tsx'
 import { api, type Paginated } from '../lib/api.ts'
@@ -131,7 +131,7 @@ function Banks() {
         </form>
       </Card>
       <ErrorText message={error ?? banks.error} />
-      {banks.data?.items.map((bank) => (
+      {banks.data?.items.filter((bank) => isSupportedBank(bank.name)).map((bank) => (
         <Card key={bank.id} title={bank.name}>
           <div className="mb-2 flex gap-2">
             <button type="button" className={ghostButtonClass} onClick={() => { const next = window.prompt('Rename bank', bank.name)?.trim(); if (next) void run(() => api.patch(`/banks/${bank.id}`, { name: next })) }}>Rename</button>
@@ -222,7 +222,7 @@ function Fees() {
       <div className="mb-3 flex flex-wrap gap-2">
         <select className={inputClass} aria-label="Bank" value={form.bankId} onChange={(e) => setForm({ ...form, bankId: e.target.value })}>
           <option value="">Any bank</option>
-          {banks.data?.items.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          {banks.data?.items.filter((b) => isSupportedBank(b.name)).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
         <select className={inputClass} aria-label="Property class" value={form.propertyClass} onChange={(e) => setForm({ ...form, propertyClass: e.target.value })}>
           <option value="">Any class</option>

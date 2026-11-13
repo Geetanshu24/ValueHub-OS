@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ASSIGNMENT_PRIORITIES, DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, INTAKE_SOURCES, INTAKE_SOURCE_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS,
+  ASSIGNMENT_PRIORITIES, DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, INTAKE_SOURCES, INTAKE_SOURCE_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS, isSupportedBank,
   type AssignmentPriority, type DocumentType, type IntakeSource, type PropertyClass,
 } from '@value-hub/valuation-shared'
 import { ErrorText, errorMessage, formatInr, inputClass } from '../components/ui.tsx'
@@ -194,7 +194,7 @@ export default function NewAssignment() {
     {step === 1 && <section className="intake-panel intake-form-panel"><div className="intake-panel-heading"><div><h3>Registration details</h3><p>Who asked for the valuation and why. Everything here is typed in.</p></div><span className="intake-form-step">REGISTRATION</span></div><div className="intake-fields-grid">
       <label>Receipt mode *<select className={inputClass} value={source} onChange={(e) => setSource(e.target.value as IntakeSource)}>{INTAKE_SOURCES.map((value) => <option key={value} value={value}>{INTAKE_SOURCE_LABELS[value]}</option>)}</select></label>
       <label>Date received *<input className={inputClass} type="date" value={form.instructionDate} onChange={(e) => setForm({ ...form, instructionDate: e.target.value })} /></label>
-      <label>Bank name *<select className={inputClass} value={form.bankId} onChange={(e) => setForm({ ...form, bankId: e.target.value, branchId: '' })}><option value="">Choose bank…</option>{banks.data?.items.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></label>
+      <label>Bank name *<select className={inputClass} value={form.bankId} onChange={(e) => setForm({ ...form, bankId: e.target.value, branchId: '' })}><option value="">Choose bank…</option>{banks.data?.items.filter((bank) => isSupportedBank(bank.name)).map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></label>
       <label>Branch name &amp; code<select className={inputClass} value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}><option value="">Optional</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
       <label>Bank officer name<input className={inputClass} placeholder="e.g. Mr. Rajesh Verma (Chief Mgr)" value={extra.officer} onChange={(e) => setE('officer', e.target.value)} /></label>
       <label>Officer mobile<input className={inputClass} placeholder="+91-98110-XXXXX" value={extra.officerMobile} onChange={(e) => setE('officerMobile', e.target.value)} /></label>

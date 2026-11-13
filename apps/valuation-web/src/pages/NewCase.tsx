@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ASSIGNMENT_PRIORITIES, ASSIGNMENT_PRIORITY_LABELS, DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, INTAKE_SOURCE_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS,
+  ASSIGNMENT_PRIORITIES, ASSIGNMENT_PRIORITY_LABELS, DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, INTAKE_SOURCE_LABELS, PROPERTY_CLASSES, PROPERTY_CLASS_LABELS, isSupportedBank,
   type AssignmentPriority, type DocumentType, type IntakeSource, type PropertyClass,
 } from '@value-hub/valuation-shared'
 import { ErrorText, errorMessage, inputClass, PageHeader } from '../components/ui.tsx'
@@ -146,7 +146,7 @@ export default function NewCase() {
       <section className="nc-card">
         <h2>2. The case</h2>
         <div className="nc-grid">
-          <label>Bank *<select className={inputClass} required value={form.bankId} onChange={(e) => set({ bankId: e.target.value, branchId: '' })}><option value="">Choose bank…</option>{banks.data?.items.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label>Bank *<select className={inputClass} required value={form.bankId} onChange={(e) => set({ bankId: e.target.value, branchId: '' })}><option value="">Choose bank…</option>{banks.data?.items.filter((b) => isSupportedBank(b.name)).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label>Branch<select className={inputClass} value={form.branchId} onChange={(e) => set({ branchId: e.target.value })}><option value="">Not known</option>{branches.map((b) => <option key={b.id} value={b.id}>{[b.name, b.city, b.district, b.state].filter(Boolean).join(', ')}</option>)}</select></label>
           <label>Client name<input className={inputClass} value={form.borrowerName} onChange={(e) => set({ borrowerName: e.target.value })} /></label>
           <label>Client phone<input className={inputClass} type="tel" value={form.clientPhone} onChange={(e) => set({ clientPhone: e.target.value })} /></label>

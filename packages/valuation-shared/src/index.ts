@@ -9,3 +9,4 @@ export * from './inspection.js';
 export * from './intake.js';
 export * from './document-checklist.js';
 export * from './site-observations.js';
+export * from './banks.js';
