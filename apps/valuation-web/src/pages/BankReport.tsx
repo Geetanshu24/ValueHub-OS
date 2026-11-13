@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Card, ErrorText, errorMessage, ghostButtonClass, buttonClass, inputClass, PageHeader } from '../components/ui.tsx'
+import SiteSketch from '../components/SiteSketch.tsx'
 import { api, downloadFile } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
@@ -8,6 +9,8 @@ import { useFetch } from '../lib/useFetch.ts'
 interface FormField { key: string; label: string; section: string; default: string; vacant: boolean; long: boolean; options?: string[] }
 interface Issue { severity: 'warn' | 'info'; message: string }
 interface Suggestion { key: string; label: string; text: string; basis: string }
+interface Mismatch { key: string; label: string; status: string; document: string; site: string; verdict: 'likely_document' | 'likely_site' | 'needs_check'; explanation: string; check: string }
+interface CircleRate { found: boolean; areaName: string; category: string; rateText: string; ratePerSqm: number | null; effective: string; sourceUrl: string; sourceTitle: string; quote: string; notes: string }
 interface Form { format: string; formats: { id: string; label: string }[]; title: string; fields: FormField[]; values: Record<string, string>; suggested: string[]; saved: boolean; locked: boolean; updates: Record<string, string>; conflicts: { key: string; label: string }[] }
 
 export default function BankReport() {
@@ -29,6 +32,10 @@ export default function BankReport() {
   const [opened, setOpened] = useState<Record<string, boolean>>({})
   const [issues, setIssues] = useState<{ title: string; items: Issue[] } | null>(null)
   const [suggestions, setSuggestions] = useState<{ title: string; items: Suggestion[] } | null>(null)
+  const [mismatch, setMismatch] = useState<{ items: Mismatch[]; visit: boolean; summary: { match: number; differs: number; missing: number; open: number } } | null>(null)
+  const [circle, setCircle] = useState<CircleRate | null>(null)
+  const [circleSaved, setCircleSaved] = useState<string | null>(null)
+  const [sketchOpen, setSketchOpen] = useState(false)
   const ai = useFetch<{ enabled: boolean }>(`/assignments/${id}/bank-report/ai-status`)
 
   useEffect(() => { if (form.data) setValues(form.data.values) }, [form.data])
@@ -83,15 +90,29 @@ export default function BankReport() {
   }
 
   // The checks and the AI read what is saved, so the boxes as they are now are saved first.
-  const assist = async (kind: 'check' | 'review' | 'draft' | 'photos') => {
-    setBusy(kind); setError(null); setIssues(null); setSuggestions(null)
+  const assist = async (kind: 'check' | 'review' | 'draft' | 'photos' | 'mismatch') => {
+    setBusy(kind); setError(null); setIssues(null); setSuggestions(null); setMismatch(null)
     try {
       if (canEdit) await api.put(`/assignments/${id}/bank-report${query}`, { values })
       const base = `/assignments/${id}/bank-report`
       if (kind === 'check') setIssues({ title: 'Check before you send', items: (await api.get<{ issues: Issue[] }>(`${base}/check${query}`)).issues })
+      else if (kind === 'mismatch') setMismatch(await api.post(`${base}/ai/mismatches`, {}))
       else if (kind === 'review') setIssues({ title: 'AI review', items: (await api.post<{ issues: Issue[] }>(`${base}/ai/review${query}`, {})).issues })
       else if (kind === 'draft') setSuggestions({ title: 'Wording drafted by AI', items: (await api.post<{ drafts: Suggestion[] }>(`${base}/ai/draft${query}`, {})).drafts })
       else setSuggestions({ title: 'What the photographs show (AI)', items: (await api.post<{ suggestions: Suggestion[] }>(`${base}/ai/photos${query}`, {})).suggestions })
+    } catch (caught) { setError(errorMessage(caught)) } finally { setBusy(null) }
+  }
+  const findCircle = async () => {
+    setBusy('circle'); setError(null); setCircle(null); setCircleSaved(null)
+    try { setCircle(await api.post<CircleRate>(`/assignments/${id}/bank-report/ai/circle-rate`, {})) } catch (caught) { setError(errorMessage(caught)) } finally { setBusy(null) }
+  }
+  // Keeps the rate with its source note (added to the case's documents), then reloads so the boxes fill from it.
+  const keepCircle = async () => {
+    if (!circle) return
+    setBusy('circle-keep'); setError(null)
+    try {
+      const done = await api.post<{ fileName: string }>(`/assignments/${id}/bank-report/circle-rate/apply`, circle)
+      setCircleSaved(done.fileName); setCircle(null); form.reload()
     } catch (caught) { setError(errorMessage(caught)) } finally { setBusy(null) }
   }
   const use = (item: Suggestion) => { set(item.key, item.text); setSuggestions((current) => (current ? { ...current, items: current.items.filter((x) => x !== item) } : current)) }
@@ -130,6 +151,8 @@ export default function BankReport() {
       <div className="br-sub">
         <label className="br-toggle"><input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} /> Show only boxes that need me <b>({attentionTotal})</b></label>
         {canEdit && updates.length > 0 && <button type="button" className="chk-link" onClick={() => { for (const [key, value] of updates) set(key, value) }}>Update {updates.length} answer{updates.length === 1 ? '' : 's'} from the documents</button>}
+        {canEdit && ai.data?.enabled && <button type="button" className={buttonClass} disabled={busy !== null} onClick={() => void assist('mismatch')}>{busy === 'mismatch' ? 'Comparing…' : 'AI: compare documents with site'}</button>}
+        {canEdit && ai.data?.enabled && <button type="button" className={ghostButtonClass} disabled={busy !== null} onClick={() => void findCircle()}>{busy === 'circle' ? 'Searching government sites…' : 'AI: find circle rate'}</button>}
         <details className="br-more">
           <summary>More tools</summary>
           <div className="br-more-body">
@@ -143,6 +166,38 @@ export default function BankReport() {
         </details>
       </div>
 
+      <details className="br-sec" onToggle={(e) => setSketchOpen(e.currentTarget.open)}>
+        <summary><b>Pictures that go into the report: location map and boundary sketch</b><span className="br-badge">drawn from the site visit</span></summary>
+        {sketchOpen && <div className="bank-rows"><SiteSketch assignmentId={id} kind="map" /><SiteSketch assignmentId={id} /><p className="pd-muted">The report also carries the site photographs, and any “Market listing screenshot” and “Circle rate copy” you upload under Documents, each beside the rate it supports.</p></div>}
+      </details>
+      {circleSaved && <p className="pd-notice" role="status">Circle rate kept. The source note “{circleSaved}” is in this case's documents, to enclose with the report. The boxes are filled from it: please check them.</p>}
+      {circle && (
+        <Card title="Circle rate from the government site (AI)">
+          {!circle.found ? <p className="pd-muted">No official rate was found for this area. {circle.notes}</p> : <>
+            <div className="bank-suggestion"><div><b>{circle.rateText}</b>
+              <p>{[circle.category, circle.areaName, circle.effective && `in force ${circle.effective}`].filter(Boolean).join(' · ')}</p>
+              {circle.quote && <p className="pd-muted">“{circle.quote}”</p>}
+              <small className="pd-muted">Source: <a href={circle.sourceUrl} target="_blank" rel="noreferrer noopener">{circle.sourceTitle || circle.sourceUrl}</a></small>
+              {circle.notes && <p className="pd-muted">{circle.notes}</p>}</div></div>
+            <p className="pd-muted">Open the page and check the rate before you keep it. Keeping it adds a source note to the case's documents and fills the guideline-rate boxes.</p>
+            <button type="button" className={buttonClass} disabled={busy !== null} onClick={() => void keepCircle()}>{busy === 'circle-keep' ? 'Keeping…' : 'Keep rate and attach source'}</button>
+          </>}
+        </Card>
+      )}
+      {mismatch && (
+        <Card title="Documents against the site visit (AI)">
+          {!mismatch.visit ? <p className="pd-muted">There is no site inspection yet. Once the inspector uploads or enters the site data, it is compared here.</p>
+            : <>
+              <p className="pd-muted">{mismatch.summary.match} match · {mismatch.summary.differs} differ · {mismatch.summary.missing} missing on one side. Suggestions only: you decide on the <Link to={`/assignments/${id}/compare`}>Compare page</Link>.</p>
+              {mismatch.items.length === 0 ? <p className="pd-muted">No open differences.</p> : mismatch.items.map((m) => (
+                <div key={m.key} className="bank-suggestion"><div><b>{m.label}</b>
+                  <p>Documents: {m.document || '—'} · Site: {m.site || '—'}</p>
+                  <p>{m.explanation}</p>
+                  <small className="pd-muted">{m.verdict === 'likely_document' ? 'Documents look right. ' : m.verdict === 'likely_site' ? 'Site looks right. ' : 'Needs a check. '}{m.check}</small></div></div>
+              ))}
+            </>}
+        </Card>
+      )}
       {issues && (
         <Card title={issues.title}>
           {issues.items.length === 0 ? <p className="pd-muted">Nothing found.</p> : <ul className="bank-issues">{issues.items.map((i, n) => <li key={n} className={i.severity === 'warn' ? 'is-warn' : ''}>{i.message}</li>)}</ul>}

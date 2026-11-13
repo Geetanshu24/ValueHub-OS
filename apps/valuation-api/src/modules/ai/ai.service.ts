@@ -35,11 +35,12 @@ export class AiService {
   }
 
   // Asks for JSON matching `schema` and returns it parsed. Throws if the AI is off, refuses or answers with something unusable.
-  async json<T>(options: { system: string; content: AiContent[]; schema: object; maxTokens?: number; effort?: 'low' | 'medium' | 'high' }): Promise<T> {
+  async json<T>(options: { system: string; content: AiContent[]; schema: object; maxTokens?: number; effort?: 'low' | 'medium' | 'high'; web?: { domains: string[] } }): Promise<T> {
     if (!this.enabled()) throw new ServiceUnavailableException('AI is not set up: add ANTHROPIC_API_KEY to the server settings');
     if (this.stubbed()) return stubAnswer(options.schema, options.content) as T;
     if (this.cli()) return this.viaCli<T>(options);
     this.client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    if (options.web) return this.withWebSearch<T>(options as typeof options & { web: { domains: string[] } });
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: options.maxTokens ?? 8000,
@@ -58,10 +59,44 @@ export class AiService {
     }
   }
 
-  private async viaCli<T>(options: { system: string; content: AiContent[]; schema: object }): Promise<T> {
+  // Lets the AI search the web, only on the given domains, then answer in the JSON shape asked for. The search
+  // tool and a fixed output format are not used together, so the shape is asked for in words and checked here.
+  private async withWebSearch<T>(options: { system: string; content: AiContent[]; schema: object; maxTokens?: number; web: { domains: string[] } }): Promise<T> {
+    const client = this.client!;
+    const messages: Anthropic.MessageParam[] = [{ role: 'user', content: options.content }];
+    let text = '';
+    for (let turn = 0; turn < 4; turn += 1) {
+      const response = await client.messages.create({
+        model: this.model,
+        max_tokens: options.maxTokens ?? 8000,
+        system: `${options.system}\n\nWhen you have finished searching, reply with only one JSON object that matches this JSON schema, and nothing else:\n${JSON.stringify(options.schema)}`,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6, allowed_domains: options.web.domains }],
+        messages,
+      } as never);
+      const message = response as unknown as { stop_reason?: string; content: Anthropic.ContentBlock[] };
+      if (message.stop_reason === 'refusal') throw new ServiceUnavailableException('The AI declined this request');
+      if (message.stop_reason === 'pause_turn') {
+        messages.push({ role: 'assistant', content: message.content as Anthropic.ContentBlockParam[] });
+        continue;
+      }
+      text = message.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('\n');
+      break;
+    }
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    try {
+      return JSON.parse(text.slice(start, end + 1)) as T;
+    } catch {
+      this.logger.warn('AI web answer was not JSON');
+      throw new ServiceUnavailableException('The AI answer could not be read, please try again');
+    }
+  }
+
+  private async viaCli<T>(options: { system: string; content: AiContent[]; schema: object; web?: { domains: string[] } }): Promise<T> {
     const dir = await mkdtemp(join(tmpdir(), 'valuehub-ai-'));
     try {
       const parts = [options.system, ''];
+      if (options.web) parts.push(`Search the web and use only pages on these official domains: ${options.web.domains.join(', ')}.`, '');
       let pictures = 0;
       for (const block of options.content) {
         if (block.type === 'text') parts.push(block.text);
@@ -73,7 +108,7 @@ export class AiService {
         }
       }
       if (pictures > 0) parts.push('Open each picture file above with the Read tool and look at it before you answer.');
-      const args = ['-p', '--output-format', 'json', '--json-schema', JSON.stringify(options.schema), '--no-session-persistence', '--tools', pictures > 0 ? 'Read' : '', '--add-dir', dir];
+      const args = ['-p', '--output-format', 'json', '--json-schema', JSON.stringify(options.schema), '--no-session-persistence', '--tools', [pictures > 0 && 'Read', options.web && 'WebSearch,WebFetch'].filter(Boolean).join(','), '--add-dir', dir];
       const stdout = await new Promise<string>((resolve, reject) => {
         const child = spawn('claude', args, { cwd: dir, stdio: ['pipe', 'pipe', 'pipe'] });
         let out = '';

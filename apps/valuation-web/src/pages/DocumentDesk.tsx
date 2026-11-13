@@ -116,31 +116,37 @@ export default function DocumentDesk() {
   const docs = useFetch<Paginated<DocumentRow>>(propertyId ? `/documents?propertyId=${propertyId}&pageSize=100` : null)
   const [type, setType] = useState<DocumentType>('SALE_DEED')
   const [pageCount, setPageCount] = useState('')
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!file || !propertyId) return
+    if (files.length === 0 || !propertyId) return
     const formElement = event.currentTarget
-    const form = new FormData()
-    form.set('type', type)
-    if (pageCount) form.set('pageCount', pageCount)
-    form.set('file', file)
     setUploading(true)
     setError(null)
-    try {
-      await api.upload(`/properties/${propertyId}/documents`, form)
-      setFile(null)
-      formElement.reset()
-      docs.reload()
-    } catch (caught) {
-      setError(errorMessage(caught))
-    } finally {
-      setUploading(false)
+    const failed: string[] = []
+    for (const file of files) {
+      const form = new FormData()
+      form.set('type', type)
+      if (pageCount && files.length === 1) form.set('pageCount', pageCount)
+      form.set('file', file)
+      try {
+        await api.upload(`/properties/${propertyId}/documents`, form)
+      } catch (caught) {
+        failed.push(`${file.name}: ${errorMessage(caught)}`)
+      }
     }
+    if (failed.length === 0) {
+      setFiles([])
+      formElement.reset()
+    } else {
+      setError(failed.join(' · '))
+    }
+    docs.reload()
+    setUploading(false)
   }
 
   return (
@@ -177,10 +183,10 @@ export default function DocumentDesk() {
                   </option>
                 ))}
               </select>
-              <input className={`${inputClass} w-28`} type="number" min={1} placeholder="Pages" value={pageCount} onChange={(e) => setPageCount(e.target.value)} />
-              <input type="file" accept="application/pdf,image/jpeg,image/png" required onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-              <button type="submit" className={buttonClass} disabled={uploading || !file}>
-                {uploading ? 'Uploading…' : 'Upload'}
+              {files.length <= 1 && <input className={`${inputClass} w-28`} type="number" min={1} placeholder="Pages" value={pageCount} onChange={(e) => setPageCount(e.target.value)} />}
+              <input type="file" multiple accept="application/pdf,image/jpeg,image/png" required onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
+              <button type="submit" className={buttonClass} disabled={uploading || files.length === 0}>
+                {uploading ? 'Uploading…' : files.length > 1 ? `Upload ${files.length} files` : 'Upload'}
               </button>
             </form>
             <ErrorText message={error} />

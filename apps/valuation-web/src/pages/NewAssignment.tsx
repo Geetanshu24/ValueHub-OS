@@ -175,7 +175,7 @@ export default function NewAssignment() {
     <section className="intake-success"><span className="intake-success-tick">✓</span><h1>Case registered successfully!</h1><p>Case ID</p><b className="intake-success-code">{created.code}</b>
       <dl><div><dt>Bank</dt><dd>{bankName(form.bankId) ?? '—'}</dd></div><div><dt>Received via</dt><dd>{INTAKE_SOURCE_LABELS[source]}</dd></div><div><dt>Files attached</dt><dd>{created.uploaded}</dd></div></dl>
       {created.failed.length > 0 && <p role="alert" className="intake-success-warn">Some files did not upload: {created.failed.join('; ')}. Add them from the Document Vault.</p>}
-      <div className="intake-success-actions"><Link to={`/assignments/${created.id}`} className="intake-outline-button">View case</Link><Link to={`/assignments/${created.id}/documents`} className="intake-primary">Go to Document Vault <span>→</span></Link></div>
+      <div className="intake-success-actions"><Link to={`/assignments/${created.id}`} className="intake-outline-button">View case</Link><Link to={`/assignments/${created.id}/documents`} className="intake-outline-button">Document Vault</Link><Link to={`/assignments/${created.id}/bank-report`} className="intake-primary">Open report <span>→</span></Link></div>
       <Link to="/assignments/new" reloadDocument className="intake-view-link">Register another case</Link>
     </section></div>
 

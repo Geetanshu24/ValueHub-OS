@@ -36,7 +36,7 @@ export function stubAnswer(schema: object, content: unknown): unknown {
   }
   if ('observations' in props) {
     const p = props.observations.items?.properties ?? {};
-    if (p.key) return { observations: [] };
+    if (p.key) return { observations: [], measurements: [] };
     const items = p.item?.enum ?? [];
     return { observations: items.slice(0, 3).map((item) => ({ item, value: 'As visible in photographs', evidence: `${DEMO}: no photograph was actually analysed.` })) };
   }
@@ -44,6 +44,8 @@ export function stubAnswer(schema: object, content: unknown): unknown {
     const keys = props.rows.items?.properties?.key?.enum ?? [];
     return { rows: keys.map((key) => ({ key, explanation: `${DEMO}: check the documents and the site measurement for ${key.replaceAll('_', ' ')}.`, suggested_note: 'The difference was noted and is disclosed in the report.' })) };
   }
+  if ('found' in props) return { found: false, area_name: '', category: '', rate_text: '', rate_per_sqm: null, effective: '', source_url: '', source_title: '', quote: '', notes: `${DEMO}: the web is not searched in demo mode.` };
+  if ('items' in props) return { items: [] };
   if ('assumptions' in props) return { assumptions: `${DEMO}: Title is assumed clear on the documents seen; area is taken as measured on site.`, needs_input: [] };
   if ('issues' in props) return { issues: [{ message: `${DEMO}: check that the owner name and the area in the report match the documents.`, severity: 'info' }] };
   if ('reply' in props) {

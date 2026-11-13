@@ -103,7 +103,7 @@ export default function NewCase() {
         <h1>Case {created.code} is logged in</h1>
         <p>{form.assignedDrafterId || form.assignedInspectorId ? 'The drafter and the inspector can see it now.' : 'Choose the drafter and the inspector on the case page.'}</p>
         {created.failed.length > 0 && <p role="alert" className="pd-flag">Some files did not upload: {created.failed.join('; ')}. Add them from the case page.</p>}
-        <div className="flex gap-2"><Link to={`/assignments/${created.id}`} className="pd-btn is-primary">Open the case →</Link><Link to="/assignments" className="pd-btn is-ghost">Back to the inbox</Link></div>
+        <div className="flex gap-2"><Link to={`/assignments/${created.id}/bank-report`} className="pd-btn is-primary">Open report →</Link><Link to={`/assignments/${created.id}`} className="pd-btn is-ghost">Open the case</Link><Link to="/assignments" className="pd-btn is-ghost">Back to the inbox</Link></div>
       </div>
     )
   }

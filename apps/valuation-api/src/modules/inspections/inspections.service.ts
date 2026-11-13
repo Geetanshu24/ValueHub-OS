@@ -7,7 +7,7 @@ import {
   NotFoundException,
   StreamableFile,
 } from '@nestjs/common';
-import { UPLOAD_LIMITS, type Paginated } from '@value-hub/valuation-shared';
+import { MEASUREMENT_LABELS, OBSERVATION_SECTIONS, UPLOAD_LIMITS, type Paginated } from '@value-hub/valuation-shared';
 import { skipTake } from '../../common/pagination/pagination.dto.js';
 import { AuditService } from '../../common/audit/audit.service.js';
 import type { AuthUser } from '../../common/auth/auth-user.js';
@@ -15,7 +15,9 @@ import { requireFile } from '../../common/storage/file-validation.js';
 import { StorageService } from '../../common/storage/storage.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AiService } from '../ai/ai.service.js';
 import { DiscrepanciesService } from '../discrepancies/discrepancies.service.js';
+import { extractText } from '../ocr/text-extract.js';
 import type {
   AddMeasurementDto,
   ListInspectionsQuery,
@@ -28,6 +30,10 @@ import type {
 const MAX_PHOTOS_PER_INSPECTION = 100;
 const MAX_MEASUREMENTS_PER_INSPECTION = 100;
 const MAX_OBSERVATIONS_BYTES = 20_000;
+const MAX_INSPECTION_FILES = 5;
+
+const OBSERVATION_FIELDS = OBSERVATION_SECTIONS.flatMap((section) => section.fields);
+const FILE_AREA_KEYS: Record<string, 'plot_area_sqm' | 'built_up_area_sqm' | 'carpet_area_sqm'> = { Plot: 'plot_area_sqm', 'Ground floor': 'built_up_area_sqm', 'First floor': 'built_up_area_sqm', 'Second floor': 'built_up_area_sqm', Basement: 'built_up_area_sqm', Carpet: 'carpet_area_sqm' };
 
 const inspectionSelect = {
   id: true,
@@ -58,6 +64,7 @@ export class InspectionsService {
     private readonly storage: StorageService,
     private readonly audit: AuditService,
     private readonly discrepancies: DiscrepanciesService,
+    private readonly ai: AiService,
   ) {}
 
   async schedule(firmId: string, actorId: string, assignmentId: string, dto: ScheduleInspectionDto, role?: string) {
@@ -170,6 +177,75 @@ export class InspectionsService {
       );
       return updated;
     });
+  }
+
+  // Reads the inspector's own notes (a filled form, a typed note or a scan) and fills the site observations
+  // and measurements from them. Only boxes that are still empty are filled: what the inspector already
+  // entered is never overwritten, and where the file says something else it is reported back instead.
+  async readFiles(user: AuthUser, id: string, uploads: Express.Multer.File[]) {
+    await this.loadEditable(user, id);
+    if (!this.ai.enabled()) throw new BadRequestException('AI is not set up, so the file cannot be read');
+    if (uploads.length === 0) throw new BadRequestException('Add at least one file');
+    if (uploads.length > MAX_INSPECTION_FILES) throw new BadRequestException(`At most ${MAX_INSPECTION_FILES} files can be read at once`);
+
+    const files: { name: string; status: 'READ' | 'NO_TEXT' | 'FAILED'; note?: string }[] = [];
+    const texts: string[] = [];
+    for (const upload of uploads) {
+      const { file, mimeType } = requireFile(upload, ['application/pdf', 'image/jpeg', 'image/png']);
+      if (file.size > UPLOAD_LIMITS.documentBytes) throw new BadRequestException(`${file.originalname} is too large`);
+      try {
+        const extracted = await extractText(file.buffer, mimeType);
+        if (extracted.note) files.push({ name: file.originalname, status: 'NO_TEXT', note: extracted.note });
+        else { files.push({ name: file.originalname, status: 'READ' }); texts.push(`--- ${file.originalname} ---\n${extracted.pages.join('\n')}`); }
+      } catch (caught) {
+        files.push({ name: file.originalname, status: 'FAILED', note: (caught as Error).message.slice(0, 200) });
+      }
+    }
+    if (texts.length === 0) return { files, filled: [], different: [], measurements: [] };
+
+    const questions = OBSERVATION_FIELDS.map((f) => `- ${f.key} (${f.label})${f.type === 'select' ? `: ${f.options?.join(' | ')}` : f.type === 'number' ? ` [number${f.unit ? `, ${f.unit}` : ''}]` : ''}`).join('\n');
+    const result = await this.ai.json<{ observations: { key: string; value: string }[]; measurements: { label: string; areaSqm: number }[] }>({
+      system:
+        'You read a property inspector\'s own site notes or filled inspection form and copy what they recorded into the form boxes. Use only what the notes say. Never guess, never fill a box from general knowledge. For a box with allowed answers, use exactly one of them, and leave the box out if the notes fit none. Areas are square metres; convert if the notes use another unit.',
+      content: [{ type: 'text', text: `Form boxes:\n${questions}\n\nMeasurement labels allowed: ${MEASUREMENT_LABELS.join(', ')}\n\nInspector's notes:\n${texts.join('\n\n').slice(0, 60_000)}` }],
+      schema: {
+        type: 'object',
+        properties: {
+          observations: { type: 'array', items: { type: 'object', properties: { key: { type: 'string', enum: OBSERVATION_FIELDS.map((f) => f.key) }, value: { type: 'string' } }, required: ['key', 'value'], additionalProperties: false } },
+          measurements: { type: 'array', items: { type: 'object', properties: { label: { type: 'string', enum: [...MEASUREMENT_LABELS] }, areaSqm: { type: 'number' } }, required: ['label', 'areaSqm'], additionalProperties: false } },
+        },
+        required: ['observations', 'measurements'],
+        additionalProperties: false,
+      },
+    });
+
+    const current = await this.prisma.inspection.findFirst({ where: { id, firmId: user.firmId }, select: { observations: true, measurements: { select: { label: true } } } });
+    const existing = Object.fromEntries(Object.entries((current?.observations ?? {}) as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '').trim()]));
+    const filled: { key: string; label: string; value: string }[] = [];
+    const different: { key: string; label: string; inspector: string; file: string }[] = [];
+    for (const item of result.observations ?? []) {
+      const field = OBSERVATION_FIELDS.find((f) => f.key === item.key);
+      const value = item.value.trim();
+      if (!field || !value || (field.type === 'select' && !field.options?.includes(value))) continue;
+      if (existing[field.key]) {
+        if (existing[field.key].toLowerCase() !== value.toLowerCase()) different.push({ key: field.key, label: field.label, inspector: existing[field.key], file: value });
+      } else {
+        existing[field.key] = value;
+        filled.push({ key: field.key, label: field.label, value });
+      }
+    }
+    const haveLabels = new Set((current?.measurements ?? []).map((m) => m.label));
+    const newMeasurements = (result.measurements ?? []).filter((m) => Number.isFinite(m.areaSqm) && m.areaSqm > 0 && m.areaSqm <= 100_000_000 && !haveLabels.has(m.label)).filter((m, i, all) => all.findIndex((x) => x.label === m.label) === i);
+    if (JSON.stringify(existing).length > MAX_OBSERVATIONS_BYTES) throw new BadRequestException('observations is too large');
+
+    await this.prisma.$transaction(async (tx) => {
+      if (filled.length > 0) await tx.inspection.update({ where: { id }, data: { observations: existing as Prisma.InputJsonObject, status: 'IN_PROGRESS' } });
+      for (const m of newMeasurements) {
+        await tx.inspectionMeasurement.create({ data: { inspectionId: id, label: m.label, fieldKey: FILE_AREA_KEYS[m.label] ?? null, areaSqm: m.areaSqm, method: 'As per site layout', note: 'Read from the inspector\'s uploaded file' } });
+      }
+      await this.audit.record({ firmId: user.firmId, actorId: user.userId, entityType: 'Inspection', entityId: id, action: 'inspection.file_read' }, tx);
+    });
+    return { files, filled, different, measurements: newMeasurements };
   }
 
   async addMeasurement(user: AuthUser, id: string, dto: AddMeasurementDto) {

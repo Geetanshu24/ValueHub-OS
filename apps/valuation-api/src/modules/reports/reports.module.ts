@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AccountsModule } from '../accounts/accounts.module.js';
+import { CircleRateService } from './circle-rate.service.js';
 import { DispatchController } from './dispatch.controller.js';
 import { DispatchService } from './dispatch.service.js';
 import { BankReportAiService } from './bank-report-ai.service.js';
@@ -15,6 +16,6 @@ import { TemplatesService } from './templates.service.js';
 @Module({
   imports: [NotificationsModule, AccountsModule],
   controllers: [ReportsController, BankReportController, DispatchController],
-  providers: [DispatchService, BankReportService, BankReportAiService, ReportsService, TemplatesService, ReportSnapshotService, ReportPdfService],
+  providers: [CircleRateService, DispatchService, BankReportService, BankReportAiService, ReportsService, TemplatesService, ReportSnapshotService, ReportPdfService],
 })
 export class ReportsModule {}

@@ -85,14 +85,14 @@ describe('bank formats', () => {
       it('has a box for every {{placeholder}} in the template, and no two boxes share a key', async () => {
         expect(new Set(format.keys).size).toBe(format.keys.length);
         const xml = await (await JSZip.loadAsync(format.template)).file('word/document.xml')!.async('string');
-        const used = new Set([...xml.matchAll(/\{\{([a-z0-9_]+)\}\}/g)].map((m) => m[1]).filter((k) => k !== 'photos'));
+        const used = new Set([...xml.matchAll(/\{\{([a-z0-9_]+)\}\}/g)].map((m) => m[1]).filter((k) => k !== 'photos' && !k.startsWith('img_')));
         expect([...used].filter((k) => !format.keys.includes(k))).toEqual([]);
         expect(format.keys.filter((k) => !used.has(k))).toEqual([]);
       });
 
       it('puts every answer into the report, and leaves out the sample property', async () => {
         const marked = Object.fromEntries(format.fields.map((f) => [f.key, `@@${f.key}@@`]));
-        const text = (await linesOf(await fillDocx(format.template, marked, []))).join('\n');
+        const text = (await linesOf(await fillDocx(format.template, marked, {}))).join('\n');
         for (const field of format.fields) expect(text, field.key).toContain(`@@${field.key}@@`);
         expect(text).not.toMatch(/Naresh|Chawla|Agrawal|Mikasa|Honour Homes/);
       });
@@ -100,9 +100,9 @@ describe('bank formats', () => {
       it('writes a Word file and a PDF from the records', async () => {
         const values = Object.fromEntries(Object.entries(format.prefill(input)).filter(([k]) => format.keys.includes(k)));
         const answers = resolveValues(format.fields, values, true);
-        const docx = await fillDocx(format.template, answers, []);
-        const marked = await fillDocx(format.template, answers, [], '[[PHOTOS]]');
-        const pdf = await renderBoiPdf(await docxToDocument(marked, [], format.footer));
+        const docx = await fillDocx(format.template, answers, {});
+        const marked = await fillDocx(format.template, answers, {}, true);
+        const pdf = await renderBoiPdf(await docxToDocument(marked, {}, format.footer));
         expect(docx.subarray(0, 2).toString()).toBe('PK');
         expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
         const text = (await linesOf(docx)).join('\n');

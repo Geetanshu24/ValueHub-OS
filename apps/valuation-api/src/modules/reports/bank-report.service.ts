@@ -1,3 +1,5 @@
+import { drawMap } from './site-map.js';
+import { drawSketch, plotShape } from './site-sketch.js';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { DOCUMENT_TYPE_LABELS, type DocumentType, type PropertyClass } from '@value-hub/valuation-shared';
 import { readFileSync } from 'node:fs';
@@ -190,16 +192,16 @@ export class BankReportService {
 
   async file(firmId: string, actor: Actor, assignmentId: string, kind: 'docx' | 'pdf', requested?: string) {
     const { values, branchName, propertyClass, propertyId, inspectionId, reportCode, format } = await this.merged(firmId, assignmentId, requested);
-    const photos = await this.photos(firmId, inspectionId);
+    const slots = await this.slots(firmId, assignmentId, propertyId, inspectionId);
     const answers = resolveValues(format.fields, { ...values, ...this.computed(format, values) }, propertyClass === 'LAND');
     let bytes: Buffer;
     if (kind === 'docx') {
-      bytes = await fillDocx(format.template, answers, photos);
+      bytes = await fillDocx(format.template, answers, slots);
     } else {
-      const marked = await fillDocx(format.template, answers, photos, '[[PHOTOS]]');
+      const marked = await fillDocx(format.template, answers, slots, true);
       const fontPath = process.env.REPORT_FONT_PATH;
       const boldPath = process.env.REPORT_FONT_BOLD_PATH;
-      bytes = await renderBoiPdf(await docxToDocument(marked, photos, format.footer), fontPath && boldPath ? { regular: readFileSync(fontPath), bold: readFileSync(boldPath) } : undefined);
+      bytes = await renderBoiPdf(await docxToDocument(marked, slots, format.footer), fontPath && boldPath ? { regular: readFileSync(fontPath), bold: readFileSync(boldPath) } : undefined);
     }
     await this.audit.record({ firmId, actorId: actor.userId, entityType: 'Assignment', entityId: assignmentId, action: 'bank_report.exported', metadata: { format: format.id, kind, propertyId } });
     const name = `${format.id}-valuation-report-${reportCode.replaceAll('/', '-')}.${kind}`;
@@ -217,6 +219,60 @@ export class BankReportService {
       if (source) out[field.key] = source.replace(/\s*\(.*\)\s*$/, '');
     }
     return out;
+  }
+
+  // The pictures that go into the report beside what they support: the location map, the rate evidence the
+  // valuer filed, and the plot sketch with the site photographs.
+  async slots(firmId: string, assignmentId: string, propertyId: string, inspectionId: string | null): Promise<Record<string, { data: Buffer; mime: string; caption: string }[]>> {
+    const photos = await this.photos(firmId, inspectionId);
+    const sketch = await this.sketch(firmId, assignmentId);
+    if (sketch) photos.unshift({ data: sketch, mime: 'image/png', caption: 'Boundary sketch of the property, drawn from the site visit (not to scale)' });
+    const map = await this.map(firmId, assignmentId);
+    return {
+      photos,
+      img_map: map ? [{ data: map, mime: 'image/png', caption: 'Location of the property on the map' }] : [],
+      img_market: await this.evidence(firmId, propertyId, 'MARKET_EVIDENCE', 'Market rate evidence'),
+      img_circle: await this.evidence(firmId, propertyId, 'CIRCLE_RATE_COPY', 'Circle rate: copy of the source'),
+    };
+  }
+
+  // Screenshots and scans filed under one document type, as pictures (a PDF cannot be drawn in as a picture).
+  private async evidence(firmId: string, propertyId: string, type: 'MARKET_EVIDENCE' | 'CIRCLE_RATE_COPY', caption: string) {
+    const rows = await this.prisma.document.findMany({ where: { firmId, propertyId, type, mimeType: { in: EMBEDDABLE } }, orderBy: { uploadedAt: 'asc' }, take: 6, select: { storageKey: true, mimeType: true, fileName: true } });
+    const out: { data: Buffer; mime: string; caption: string }[] = [];
+    for (const row of rows) {
+      try {
+        out.push({ data: await this.storage.read(row.storageKey), mime: row.mimeType, caption });
+      } catch {
+        // A file that is gone is left out; the report still draws.
+      }
+    }
+    return out;
+  }
+
+  // The location map from the site visit's GPS position, else the property's own coordinates.
+  async map(firmId: string, assignmentId: string): Promise<Buffer | null> {
+    const visit = await this.prisma.inspection.findFirst({ where: { assignmentId, firmId, latitude: { not: null }, longitude: { not: null } }, orderBy: { visitedAt: 'desc' }, select: { latitude: true, longitude: true, assignment: { select: { code: true } } } });
+    const own = visit ? null : await this.prisma.assignment.findFirst({ where: { id: assignmentId, firmId }, select: { code: true, property: { select: { latitude: true, longitude: true } } } });
+    const lat = visit?.latitude ?? own?.property.latitude;
+    const lon = visit?.longitude ?? own?.property.longitude;
+    if (lat === null || lat === undefined || lon === null || lon === undefined) return null;
+    return drawMap({ latitude: Number(lat), longitude: Number(lon), caseCode: visit?.assignment.code ?? own?.code });
+  }
+
+  // A schematic plot sketch from the latest site visit, or nothing when the visit recorded no boundaries or sizes.
+  async sketch(firmId: string, assignmentId: string): Promise<Buffer | null> {
+    const visit = await this.prisma.inspection.findFirst({
+      where: { assignmentId, firmId },
+      orderBy: { visitedAt: 'desc' },
+      select: { observations: true, measurements: { select: { label: true, areaSqm: true } }, assignment: { select: { code: true, property: { select: { addressLine: true } } } } },
+    });
+    if (!visit) return null;
+    const observations = Object.fromEntries(Object.entries((visit.observations ?? {}) as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '').trim()]));
+    const hasBoundary = ['north', 'south', 'east', 'west'].some((d) => observations[`site_boundary_${d}`]);
+    if (!plotShape(observations) && !hasBoundary) return null;
+    const plot = visit.measurements.find((m) => m.label === 'Plot');
+    return drawSketch({ observations, areaSqm: plot ? Number(plot.areaSqm) : null, caseCode: visit.assignment.code, address: visit.assignment.property.addressLine });
   }
 
   async photos(firmId: string, inspectionId: string | null) {

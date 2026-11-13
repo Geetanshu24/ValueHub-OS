@@ -15,6 +15,8 @@ export const DOCUMENT_TYPES = [
   'ELECTRICITY_BILL',
   'PROPERTY_TAX',
   'REGISTRY_PAPERS',
+  'MARKET_EVIDENCE',
+  'CIRCLE_RATE_COPY',
   'OTHER',
 ] as const;
 
@@ -36,6 +38,8 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   ELECTRICITY_BILL: 'Electricity bill',
   PROPERTY_TAX: 'Property tax',
   REGISTRY_PAPERS: 'Registry papers',
+  MARKET_EVIDENCE: 'Market listing screenshot',
+  CIRCLE_RATE_COPY: 'Circle rate copy',
   OTHER: 'Other',
 };
 

@@ -28,6 +28,13 @@ export interface Photo {
 const NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
 const MAX_PHOTO_WIDTH = 4_800_000; // EMU, about 13 cm
 const MAX_PHOTO_HEIGHT = 3_300_000;
+// Maps, rate evidence and the plot sketch are shown larger than site photographs.
+const MAX_WIDE_WIDTH = 5_900_000; // about 16.4 cm
+const MAX_WIDE_HEIGHT = 3_900_000;
+
+// Pictures for the places in a template marked {{photos}}, {{img_map}}, {{img_market}}, {{img_circle}}.
+export type Slots = Record<string, Photo[]>;
+export const WIDE_SLOTS = ['img_map', 'img_market', 'img_circle', 'img_sketch'];
 
 const escapeXml = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const unescapeXml = (text: string) => text.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&apos;', "'").replaceAll('&amp;', '&');
@@ -48,7 +55,7 @@ export function resolveValues(fields: TemplateField[], values: Record<string, st
 function fillText(xml: string, values: Record<string, string>): string {
   return xml.replace(/<w:t((?:\s[^>]*)?)>([^<]*)<\/w:t>/g, (whole, attrs: string, content: string) => {
     if (!content.includes('{{')) return whole;
-    const text = content.replace(/\{\{([a-z0-9_]+)\}\}/g, (_m, key: string) => (key === 'photos' ? '' : escapeXml(values[key] ?? '')));
+    const text = content.replace(/\{\{([a-z0-9_]+)\}\}/g, (_m, key: string) => (key === 'photos' || key.startsWith('img_') ? _m : escapeXml(values[key] ?? '')));
     // The values were written escaped above; split on line breaks into separate runs of text.
     const lines = text.split('\n');
     const open = `<w:t${attrs.includes('xml:space') ? attrs : `${attrs} xml:space="preserve"`}>`;
@@ -56,9 +63,9 @@ function fillText(xml: string, values: Record<string, string>): string {
   });
 }
 
-function photoSize(data: Buffer): { cx: number; cy: number } {
+function photoSize(data: Buffer, wide = false): { cx: number; cy: number } {
   const image = (new PDFDocument() as unknown as { openImage(b: Buffer): { width: number; height: number } }).openImage(data);
-  const scale = Math.min(MAX_PHOTO_WIDTH / image.width, MAX_PHOTO_HEIGHT / image.height);
+  const scale = Math.min((wide ? MAX_WIDE_WIDTH : MAX_PHOTO_WIDTH) / image.width, (wide ? MAX_WIDE_HEIGHT : MAX_PHOTO_HEIGHT) / image.height);
   return { cx: Math.round(image.width * scale), cy: Math.round(image.height * scale) };
 }
 
@@ -66,8 +73,8 @@ const photoParagraph = (rId: string, id: number, size: { cx: number; cy: number 
   `<w:p><w:pPr><w:keepNext/><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${size.cx}" cy="${size.cy}"/><wp:docPr id="${9000 + id}" name="Photo ${id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="${NS_A}" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="${NS_A}"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${9000 + id}" name="photo${id}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${size.cx}" cy="${size.cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>` +
   (caption ? `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t xml:space="preserve">${escapeXml(caption)}</w:t></w:r></w:p>` : '');
 
-// Fills the template. With `photoMarker` the photos are left as that text instead of being embedded.
-export async function fillDocx(template: Buffer, values: Record<string, string>, photos: Photo[], photoMarker?: string): Promise<Buffer> {
+// Fills the template. With `markers` each picture place is left as [[IMG:name]] instead of being embedded.
+export async function fillDocx(template: Buffer, values: Record<string, string>, slots: Slots, markers = false): Promise<Buffer> {
   const zip = await JSZip.loadAsync(template);
   let xml = await zip.file('word/document.xml')!.async('string');
   let rels = await zip.file('word/_rels/document.xml.rels')!.async('string');
@@ -75,20 +82,26 @@ export async function fillDocx(template: Buffer, values: Record<string, string>,
 
   xml = fillText(xml, values);
 
-  // The paragraph holding {{photos}} becomes one paragraph per photo.
-  xml = xml.replace(/<w:p(?:\s[^>]*[^/>])?>(?:(?!<\/w:p>)[\s\S])*?\{\{photos\}\}[\s\S]*?<\/w:p>/, () => {
-    if (photoMarker) return `<w:p><w:r><w:t>${photoMarker}</w:t></w:r></w:p>`;
-    let out = '';
-    photos.forEach((photo, i) => {
-      const ext = photo.mime === 'image/png' ? 'png' : 'jpeg';
-      const rId = `rIdPhoto${i + 1}`;
-      zip.file(`word/media/photo${i + 1}.${ext}`, photo.data);
-      rels = rels.replace('</Relationships>', `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/photo${i + 1}.${ext}"/></Relationships>`);
-      if (!new RegExp(`Extension="${ext}"`, 'i').test(types)) types = types.replace('<Override', `<Default Extension="${ext}" ContentType="image/${ext}"/><Override`);
-      out += photoParagraph(rId, i + 1, photoSize(photo.data), photo.caption);
+  // The paragraph holding a slot's {{name}} becomes one paragraph per picture.
+  let count = 0;
+  for (const name of new Set([...xml.matchAll(/\{\{(photos|img_[a-z]+)\}\}/g)].map((m) => m[1]))) {
+    const wide = WIDE_SLOTS.includes(name);
+    const pictures = slots[name] ?? [];
+    xml = xml.replace(new RegExp(`<w:p(?:\\s[^>]*[^/>])?>(?:(?!<\\/w:p>)[\\s\\S])*?\\{\\{${name}\\}\\}[\\s\\S]*?<\\/w:p>`), () => {
+      if (markers) return `<w:p><w:r><w:t>[[IMG:${name}]]</w:t></w:r></w:p>`;
+      let out = '';
+      for (const photo of pictures) {
+        count += 1;
+        const ext = photo.mime === 'image/png' ? 'png' : 'jpeg';
+        const rId = `rIdPhoto${count}`;
+        zip.file(`word/media/photo${count}.${ext}`, photo.data);
+        rels = rels.replace('</Relationships>', `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/photo${count}.${ext}"/></Relationships>`);
+        if (!new RegExp(`Extension="${ext}"`, 'i').test(types)) types = types.replace('<Override', `<Default Extension="${ext}" ContentType="image/${ext}"/><Override`);
+        out += photoParagraph(rId, count, photoSize(photo.data, wide), photo.caption);
+      }
+      return out || '<w:p/>';
     });
-    return out || '<w:p/>';
-  });
+  }
 
   zip.file('word/document.xml', xml);
   zip.file('word/_rels/document.xml.rels', rels);
@@ -112,7 +125,7 @@ const textOf = (xml: string) => {
 const paragraphsOf = (xml: string) => xml.match(/<w:p(?:\s[^>]*)?\/>|<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g) ?? [];
 
 // Turns the filled Word report into the blocks the PDF writer draws: every paragraph and every table cell, in order.
-export async function docxToDocument(filled: Buffer, photos: Photo[], footer: string): Promise<BoiDocument> {
+export async function docxToDocument(filled: Buffer, slots: Slots, footer: string): Promise<BoiDocument> {
   const zip = await JSZip.loadAsync(filled);
   const xml = await zip.file('word/document.xml')!.async('string');
   const body = xml.slice(xml.indexOf('<w:body>') + 8, xml.lastIndexOf('</w:body>'));
@@ -140,9 +153,14 @@ export async function docxToDocument(filled: Buffer, photos: Photo[], footer: st
         );
         rowWidths.push(widths);
       }
+      // A picture place inside a table is drawn just after the table.
+      const placed: string[] = [];
+      for (const row of rows) row.forEach((cell, i) => { const found = [...cell.matchAll(/\[\[IMG:([a-z_]+)\]\]/g)]; if (found.length) { found.forEach((f) => placed.push(f[1])); row[i] = cell.replace(/\[\[IMG:[a-z_]+\]\]/g, '').trim(); } });
       blocks.push({ type: 'table', widths: grid.length > 0 ? grid : rowWidths[0] ?? [100], rows, rowWidths });
-    } else if (piece.includes('[[PHOTOS]]')) {
-      if (photos.length > 0) blocks.push({ type: 'photos', photos });
+      for (const name of placed) if ((slots[name] ?? []).length > 0) blocks.push({ type: 'photos', photos: slots[name], wide: WIDE_SLOTS.includes(name) });
+    } else if (/\[\[IMG:[a-z_]+\]\]/.test(piece)) {
+      const name = /\[\[IMG:([a-z_]+)\]\]/.exec(piece)![1];
+      if ((slots[name] ?? []).length > 0) blocks.push({ type: 'photos', photos: slots[name], wide: WIDE_SLOTS.includes(name) });
     } else {
       const text = textOf(piece).replace(/\n+$/, '');
       if (piece.includes('<w:br w:type="page"/>')) blocks.push({ type: 'break' });

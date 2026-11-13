@@ -4,7 +4,7 @@ export type Block =
   | { type: 'heading'; text: string }
   | { type: 'para'; text: string; bold?: boolean; align?: 'left' | 'center' | 'right' }
   | { type: 'table'; widths: number[]; rows: string[][]; header?: boolean; shadedRows?: number[]; rowWidths?: number[][] }
-  | { type: 'photos'; photos: { data: Buffer; mime: string; caption: string }[] }
+  | { type: 'photos'; photos: { data: Buffer; mime: string; caption: string }[]; wide?: boolean }
   | { type: 'break' };
 
 export interface Letterhead {

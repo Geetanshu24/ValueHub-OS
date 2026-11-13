@@ -5,5 +5,6 @@ import { prefillBoi, type PrefillInput } from './boi-prefill.js';
 export function prefillPnb(input: PrefillInput): Record<string, string> {
   const out = prefillBoi(input);
   out.dec_2 = `Valuation for loan purpose and appointing authority of ${input.assignment.bankName}${input.assignment.branchName ? `, ${input.assignment.branchName}` : ''}`;
+  if (input.facts.guideline_rate) out.val_circle_rate = input.facts.guideline_rate;
   return out;
 }

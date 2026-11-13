@@ -28,6 +28,12 @@ export const OBSERVATION_SECTIONS: readonly ObservationSection[] = [
       { key: 'site_boundary_south', label: 'South side: who or what is there', type: 'text' },
       { key: 'site_length_ft', label: 'Plot length', type: 'number', unit: 'ft' },
       { key: 'site_breadth_ft', label: 'Plot breadth', type: 'number', unit: 'ft' },
+      { key: 'site_side_north_ft', label: 'North side length', type: 'number', unit: 'ft' },
+      { key: 'site_side_south_ft', label: 'South side length', type: 'number', unit: 'ft' },
+      { key: 'site_side_east_ft', label: 'East side length', type: 'number', unit: 'ft' },
+      { key: 'site_side_west_ft', label: 'West side length', type: 'number', unit: 'ft' },
+      { key: 'site_diagonal_ft', label: 'Diagonal, north-west corner to south-east corner (for a plot that is not a rectangle)', type: 'number', unit: 'ft' },
+      { key: 'site_road_side', label: 'Side the approach road is on', type: 'select', options: ['North', 'South', 'East', 'West'] },
     ],
   },
   {

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -10,10 +11,11 @@ import {
   Query,
   StreamableFile,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { UPLOAD_LIMITS } from '@value-hub/valuation-shared';
 import { AssignmentAccessGuard } from '../../common/auth/assignment-access.guard.js';
 import { CurrentUser, type AuthUser } from '../../common/auth/auth-user.js';
@@ -77,6 +79,15 @@ export class InspectionsController {
     @UploadedFile() file: Express.Multer.File | undefined,
   ) {
     return this.inspections.addPhoto(user, id, dto, file);
+  }
+
+  // The inspector's own notes or filled form: the site boxes and measurements fill from it.
+  @Roles(...FIELD_ROLES)
+  @Post('inspections/:id/read-file')
+  @HttpCode(200)
+  @UseInterceptors(FilesInterceptor('files', 5, { limits: { fileSize: UPLOAD_LIMITS.documentBytes } }))
+  readFiles(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @UploadedFiles() files: Express.Multer.File[] | undefined) {
+    return this.inspections.readFiles(user, id, files ?? []);
   }
 
   @Roles(...FIELD_ROLES)

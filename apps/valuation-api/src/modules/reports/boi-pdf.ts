@@ -68,10 +68,11 @@ export function renderBoiPdf(document: BoiDocument, fonts: { regular: string | B
         }
         case 'photos':
           for (const photo of block.photos) {
-            room(250);
+            const box: [number, number] = block.wide ? [WIDTH * 0.95, 300] : [WIDTH * 0.7, 220];
+            room(box[1] + 30);
             try {
-              doc.image(photo.data, MARGIN, doc.y + 4, { fit: [WIDTH * 0.7, 220] });
-              doc.y += 230;
+              doc.image(photo.data, MARGIN, doc.y + 4, { fit: box });
+              doc.y += box[1] + 10;
             } catch {
               regular().text('(photo could not be drawn)', MARGIN, doc.y);
             }

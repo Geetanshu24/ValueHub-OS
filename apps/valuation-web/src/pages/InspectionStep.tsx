@@ -1,3 +1,4 @@
+import SiteSketch from '../components/SiteSketch.tsx'
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -95,6 +96,8 @@ export default function InspectionStep() {
   const aiStatus = useFetch<{ enabled: boolean }>('/ai/status')
   const [photoAi, setPhotoAi] = useState<{ photos: number; suggestions: { key: string; label: string; value: string; evidence: string }[] } | null>(null)
   const [photoAiBusy, setPhotoAiBusy] = useState(false)
+  // The inspector's own notes or filled form, read to fill the boxes below.
+  const [fileRead, setFileRead] = useState<{ files: { name: string; status: string; note?: string }[]; filled: { key: string; label: string; value: string }[]; different: { key: string; label: string; inspector: string; file: string }[]; measurements: { label: string; areaSqm: number }[] } | null>(null)
   async function readPhotosWithAi() {
     if (!visit) return
     setPhotoAiBusy(true); setError(null)
@@ -247,6 +250,18 @@ export default function InspectionStep() {
     <StageBanner icon="⛑" title={`${visit?.inspector.fullName ?? a.assignedValuer.fullName} · Field Site Inspector`} tag={visit && locked(visit.status) ? 'Field Certified' : undefined} line={`Case Ref: ${a.code}${visit ? ` · Scheduled: ${when(visit.visitedAt)}` : ''}`} asideLabel="Inspection Progress" aside={visit ? (STAGES.find(([k]) => k === visit.status)?.[1] ?? visit.status) : 'Not scheduled'}>{editable && <button type="button" className="stage-sync" disabled={busy || !obsDirty} onClick={() => void saveObservations()} title="Saves the observations and floor details"><i className={online ? 'is-on' : ''} /> {online ? (obsDirty ? 'Sync now' : 'Live sync: all saved') : 'Offline: will sync when back'}</button>}</StageBanner>
     <StepHeader a={a} here={2} eyebrow="STEP 3 · SITE INSPECTION" title="Site Inspection" subtitle="Visit the property, measure it, photograph it and record what you see. Differences from the documents are flagged, never overwritten." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
+    {editable && aiStatus.data?.enabled && <div className="brief-card"><div className="brief-card-head"><b>Upload your inspection notes or filled form</b><span>PDF, JPG or PNG. The site boxes and measurements below fill from it. What you already entered is never overwritten.</span></div>
+      <label className="pd-btn is-primary pd-upload"><input type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" disabled={busy} onChange={(e) => {
+        const chosen = Array.from(e.target.files ?? []); e.target.value = ''
+        if (chosen.length === 0) return
+        void run(async () => { const form = new FormData(); chosen.forEach((f) => form.append('files', f)); setFileRead(await api.upload<NonNullable<typeof fileRead>>(`/inspections/${visit!.id}/read-file`, form)) })
+      }} />{busy ? 'Reading…' : '⬆ Upload inspection data'}</label>
+      {fileRead && <div className="in-ai"><b>{fileRead.filled.length} box{fileRead.filled.length === 1 ? '' : 'es'} filled{fileRead.measurements.length ? ` and ${fileRead.measurements.length} measurement${fileRead.measurements.length === 1 ? '' : 's'} added` : ''} from your file. Check each one below.</b>
+        {fileRead.files.filter((f) => f.status !== 'READ').map((f) => <p key={f.name}>{f.name}: {f.status === 'NO_TEXT' ? 'no readable text' : 'could not be read'}{f.note ? ` (${f.note})` : ''}</p>)}
+        {fileRead.filled.map((x) => <div key={x.key} className="in-ai-row"><span><b>{x.label}: {x.value}</b></span></div>)}
+        {fileRead.different.length > 0 && <><b>Your file says something different from what is already entered:</b>{fileRead.different.map((x) => <div key={x.key} className="in-ai-row"><span><b>{x.label}</b><small>Entered: {x.inspector} · File: {x.file}</small></span></div>)}</>}
+      </div>}
+    </div>}
     <div className="brief-card"><div className="brief-card-head"><b>Pre-filled case briefing (from documents, for reference only)</b><span>Strict rule: record ACTUAL site observations independently</span></div>
       <div className="brief-grid"><div><small>Property as per documents</small><b>{a.property.addressLine}</b></div>
         <div><small>Documented areas</small><b>{(context.data?.documentedAreas ?? []).length ? (context.data?.documentedAreas ?? []).map((d) => `${factLabel(d.fieldKey)}: ${fmt(d.value)} sq m`).join(' · ') : 'None verified yet'}</b></div>
@@ -353,6 +368,8 @@ export default function InspectionStep() {
                 </label>)}</div>}
               </div>
             })}</div>
+            <details className="in-acc-item" style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', padding: '10px 0' }}><b>Boundary sketch</b> <small className="pd-muted">drawn from the boundaries and sides you save above; it goes into the bank report</small></summary>
+              <SiteSketch assignmentId={id} version={JSON.stringify(visit.observations ?? {})} /></details>
             <div className="in-floors">
               <div className="in-floors-head"><b>Floor-wise built-up details</b><small>Covered area = length × width in feet. Carpet is estimated at 85% of covered.</small></div>
               {floors.length > 0 && <div className="in-table-wrap"><table className="in-table"><thead><tr><th>Floor</th><th>Use</th><th className="is-num">L (ft)</th><th className="is-num">W (ft)</th><th className="is-num">Covered (sq ft)</th><th className="is-num">Carpet est.</th><th>Condition</th><th>Remarks</th><th /></tr></thead><tbody>

@@ -43,6 +43,17 @@ export interface Draft {
 
 const MAX_PHOTOS = 8;
 
+export interface MismatchItem {
+  key: string;
+  label: string;
+  status: string;
+  document: string;
+  site: string;
+  verdict: 'likely_document' | 'likely_site' | 'needs_check';
+  explanation: string;
+  check: string;
+}
+
 @Injectable()
 export class BankReportAiService {
   constructor(
@@ -71,6 +82,26 @@ export class BankReportAiService {
       schema: { type: 'object', properties: { issues: { type: 'array', items: { type: 'object', properties: { message: { type: 'string' }, severity: { type: 'string', enum: ['warn', 'info'] } }, required: ['message', 'severity'], additionalProperties: false } } }, required: ['issues'], additionalProperties: false },
     });
     return { issues: result.issues.slice(0, 10) };
+  }
+
+  // Where the documents and the inspector's site notes disagree or leave a gap: what each difference probably
+  // means and what to check, using the rows the Compare page already shows. Nothing is decided or saved.
+  async mismatches(firmId: string, assignmentId: string): Promise<{ summary: { match: number; differs: number; missing: number; open: number }; items: MismatchItem[]; visit: boolean }> {
+    const data = await this.reports.compare(firmId, assignmentId);
+    const rows = data.rows.filter((r) => (r.status === 'differs' || r.status === 'document_only' || r.status === 'site_only') && !(r.decision && !r.decision.stale));
+    if (!data.visit || rows.length === 0) return { summary: data.summary, items: [], visit: !!data.visit };
+    const keys = rows.map((r) => r.key);
+    const result = await this.ai.json<{ items: { key: string; verdict: 'likely_document' | 'likely_site' | 'needs_check'; explanation: string; check: string }[] }>({
+      system:
+        "You compare what a property's documents say with what the inspector found on site, for an Indian bank valuation report. For each row say which side is more likely right and why, in one or two plain sentences, and the one thing the valuer should check or ask for. Use only the values given. Treat small wording differences, units and abbreviations as the same thing. Never decide for the valuer: use 'needs_check' when the values do not settle it.",
+      content: [{ type: 'text', text: `Rows:\n${JSON.stringify(rows.map((r) => ({ key: r.key, label: r.label, status: r.status, as_per_documents: r.document, each_document: r.fromDocuments, as_per_site: r.site, note: r.note })), null, 1)}` }],
+      schema: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { key: { type: 'string', enum: keys }, verdict: { type: 'string', enum: ['likely_document', 'likely_site', 'needs_check'] }, explanation: { type: 'string' }, check: { type: 'string' } }, required: ['key', 'verdict', 'explanation', 'check'], additionalProperties: false } } }, required: ['items'], additionalProperties: false },
+    });
+    const items = (result.items ?? []).filter((i) => keys.includes(i.key) && i.explanation.trim()).map((i) => {
+      const row = rows.find((r) => r.key === i.key)!;
+      return { key: i.key, label: row.label, status: row.status, document: row.document, site: row.site, verdict: i.verdict, explanation: i.explanation.trim(), check: i.check.trim() };
+    });
+    return { summary: data.summary, items, visit: true };
   }
 
   // Drafts wording for the boxes that are text rather than facts, from what the report already holds.
