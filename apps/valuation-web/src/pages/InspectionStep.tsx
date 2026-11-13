@@ -8,7 +8,7 @@ import {
 } from '@value-hub/valuation-shared'
 import { ReadyCard, StageBanner, StepHeader, STEP_OF_STATUS, stepPath, type AssignmentHead, type Readiness } from '../components/WorkflowParts.tsx'
 import { ErrorText, errorMessage } from '../components/ui.tsx'
-import { api, fileBlobUrl } from '../lib/api.ts'
+import { api, fileBlobUrl, openFile } from '../lib/api.ts'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
 
@@ -97,7 +97,8 @@ export default function InspectionStep() {
   const [photoAi, setPhotoAi] = useState<{ photos: number; suggestions: { key: string; label: string; value: string; evidence: string }[] } | null>(null)
   const [photoAiBusy, setPhotoAiBusy] = useState(false)
   // The inspector's own notes or filled form, read to fill the boxes below.
-  const [fileRead, setFileRead] = useState<{ files: { name: string; status: string; note?: string }[]; filled: { key: string; label: string; value: string }[]; different: { key: string; label: string; inspector: string; file: string }[]; measurements: { label: string; areaSqm: number }[] } | null>(null)
+  const siteDocs = useFetch<{ items: { id: string; fileName: string }[] }>(id ? `/documents?assignmentId=${id}&type=SITE_INSPECTION&pageSize=20` : null)
+  const [fileRead, setFileRead] = useState<{ files: { name: string; status: string; note?: string }[]; documents?: { id: string; fileName: string }[]; filled: { key: string; label: string; value: string }[]; different: { key: string; label: string; inspector: string; file: string }[]; measurements: { label: string; areaSqm: number }[] } | null>(null)
   async function readPhotosWithAi() {
     if (!visit) return
     setPhotoAiBusy(true); setError(null)
@@ -250,16 +251,18 @@ export default function InspectionStep() {
     <StageBanner icon="⛑" title={`${visit?.inspector.fullName ?? a.assignedValuer.fullName} · Field Site Inspector`} tag={visit && locked(visit.status) ? 'Field Certified' : undefined} line={`Case Ref: ${a.code}${visit ? ` · Scheduled: ${when(visit.visitedAt)}` : ''}`} asideLabel="Inspection Progress" aside={visit ? (STAGES.find(([k]) => k === visit.status)?.[1] ?? visit.status) : 'Not scheduled'}>{editable && <button type="button" className="stage-sync" disabled={busy || !obsDirty} onClick={() => void saveObservations()} title="Saves the observations and floor details"><i className={online ? 'is-on' : ''} /> {online ? (obsDirty ? 'Sync now' : 'Live sync: all saved') : 'Offline: will sync when back'}</button>}</StageBanner>
     <StepHeader a={a} here={2} eyebrow="STEP 3 · SITE INSPECTION" title="Site Inspection" subtitle="Visit the property, measure it, photograph it and record what you see. Differences from the documents are flagged, never overwritten." />
     {notice && <p className="pd-notice" role="status">{notice} <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">×</button></p>}
-    {editable && aiStatus.data?.enabled && <div className="brief-card"><div className="brief-card-head"><b>Upload your inspection notes or filled form</b><span>PDF, JPG or PNG. The site boxes and measurements below fill from it. What you already entered is never overwritten.</span></div>
+    {editable && <div className="brief-card"><div className="brief-card-head"><b>Upload your site documents</b><span>Upload what you brought from the site (notes, filled form, scans). The boxes and measurements below fill from it, so you only check them. What you already entered is never overwritten.</span></div>
+      {aiStatus.data?.enabled === false && <p className="pd-flag" role="alert">AI is not set up on this server. Files you upload are kept with the case but not read, so fill the boxes below by hand.</p>}
       <label className="pd-btn is-primary pd-upload"><input type="file" multiple hidden accept="application/pdf,image/jpeg,image/png" disabled={busy} onChange={(e) => {
         const chosen = Array.from(e.target.files ?? []); e.target.value = ''
         if (chosen.length === 0) return
-        void run(async () => { const form = new FormData(); chosen.forEach((f) => form.append('files', f)); setFileRead(await api.upload<NonNullable<typeof fileRead>>(`/inspections/${visit!.id}/read-file`, form)) })
-      }} />{busy ? 'Reading…' : '⬆ Upload inspection data'}</label>
-      {fileRead && <div className="in-ai"><b>{fileRead.filled.length} box{fileRead.filled.length === 1 ? '' : 'es'} filled{fileRead.measurements.length ? ` and ${fileRead.measurements.length} measurement${fileRead.measurements.length === 1 ? '' : 's'} added` : ''} from your file. Check each one below.</b>
+        void run(async () => { const form = new FormData(); chosen.forEach((f) => form.append('files', f)); setFileRead(await api.upload<NonNullable<typeof fileRead>>(`/inspections/${visit!.id}/read-file`, form)); siteDocs.reload() })
+      }} />{busy ? 'Reading your files…' : '⬆ Upload site documents'}</label>
+      {(siteDocs.data?.items.length ?? 0) > 0 && <p className="pd-muted">Kept with the case: {siteDocs.data!.items.map((d, i) => <span key={d.id}>{i > 0 && ', '}<button type="button" className="chk-link" onClick={() => void openFile(`/documents/${d.id}/file`)}>{d.fileName}</button></span>)}</p>}
+      {fileRead && <div className="in-ai"><b>{fileRead.filled.length} box{fileRead.filled.length === 1 ? '' : 'es'} filled{fileRead.measurements.length ? ` and ${fileRead.measurements.length} measurement${fileRead.measurements.length === 1 ? '' : 's'} added` : ''} from your files. {Math.max(totalFields - answered - fileRead.filled.length, 0) > 0 ? 'Check them below, and add what the files did not say.' : 'Check them below.'}</b>
         {fileRead.files.filter((f) => f.status !== 'READ').map((f) => <p key={f.name}>{f.name}: {f.status === 'NO_TEXT' ? 'no readable text' : 'could not be read'}{f.note ? ` (${f.note})` : ''}</p>)}
         {fileRead.filled.map((x) => <div key={x.key} className="in-ai-row"><span><b>{x.label}: {x.value}</b></span></div>)}
-        {fileRead.different.length > 0 && <><b>Your file says something different from what is already entered:</b>{fileRead.different.map((x) => <div key={x.key} className="in-ai-row"><span><b>{x.label}</b><small>Entered: {x.inspector} · File: {x.file}</small></span></div>)}</>}
+        {fileRead.different.length > 0 && <><b>Your files say something different from what is already entered:</b>{fileRead.different.map((x) => <div key={x.key} className="in-ai-row"><span><b>{x.label}</b><small>Entered: {x.inspector} · File: {x.file}</small></span></div>)}</>}
       </div>}
     </div>}
     <div className="brief-card"><div className="brief-card-head"><b>Pre-filled case briefing (from documents, for reference only)</b><span>Strict rule: record ACTUAL site observations independently</span></div>

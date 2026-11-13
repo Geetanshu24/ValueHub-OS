@@ -25,7 +25,7 @@ interface Suggestion { id: string; label: string; value: string; from: string; p
 
 const CATEGORY: Record<DocumentType, string> = {
   BANK_INSTRUCTION: 'Bank instruction', SALE_DEED: 'Ownership / title', MAGISTRATE_CERTIFICATE: 'Ownership / title', REVENUE_RECORD: 'Revenue records', PATWARI_REPORT: 'Revenue records',
-  SHAJRA_PLAN: 'Layout / location', APPROVED_PLAN: 'Layout / location', LAYOUT_PLAN: 'Layout / location', OCCUPATION_CERTIFICATE: 'Layout / location', COMPLETION_CERTIFICATE: 'Layout / location', TAX_RECEIPT: 'Utilities & tax', PROPERTY_TAX: 'Utilities & tax', WATER_BILL: 'Utilities & tax', ELECTRICITY_BILL: 'Utilities & tax', REGISTRY_PAPERS: 'Ownership / title', MARKET_EVIDENCE: 'Rate evidence', CIRCLE_RATE_COPY: 'Rate evidence', OTHER: 'Other',
+  SHAJRA_PLAN: 'Layout / location', APPROVED_PLAN: 'Layout / location', LAYOUT_PLAN: 'Layout / location', OCCUPATION_CERTIFICATE: 'Layout / location', COMPLETION_CERTIFICATE: 'Layout / location', TAX_RECEIPT: 'Utilities & tax', PROPERTY_TAX: 'Utilities & tax', WATER_BILL: 'Utilities & tax', ELECTRICITY_BILL: 'Utilities & tax', REGISTRY_PAPERS: 'Ownership / title', MARKET_EVIDENCE: 'Rate evidence', CIRCLE_RATE_COPY: 'Rate evidence', SITE_INSPECTION: 'Site inspection', OTHER: 'Other',
 }
 const sizeLabel = (bytes: number) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 

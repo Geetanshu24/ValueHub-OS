@@ -11,7 +11,7 @@ import { MEASUREMENT_LABELS, OBSERVATION_SECTIONS, UPLOAD_LIMITS, type Paginated
 import { skipTake } from '../../common/pagination/pagination.dto.js';
 import { AuditService } from '../../common/audit/audit.service.js';
 import type { AuthUser } from '../../common/auth/auth-user.js';
-import { requireFile } from '../../common/storage/file-validation.js';
+import { requireFile, safeFileName } from '../../common/storage/file-validation.js';
 import { StorageService } from '../../common/storage/storage.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -183,8 +183,7 @@ export class InspectionsService {
   // and measurements from them. Only boxes that are still empty are filled: what the inspector already
   // entered is never overwritten, and where the file says something else it is reported back instead.
   async readFiles(user: AuthUser, id: string, uploads: Express.Multer.File[]) {
-    await this.loadEditable(user, id);
-    if (!this.ai.enabled()) throw new BadRequestException('AI is not set up, so the file cannot be read');
+    const visit = await this.loadEditable(user, id);
     if (uploads.length === 0) throw new BadRequestException('Add at least one file');
     if (uploads.length > MAX_INSPECTION_FILES) throw new BadRequestException(`At most ${MAX_INSPECTION_FILES} files can be read at once`);
 
@@ -201,7 +200,10 @@ export class InspectionsService {
         files.push({ name: file.originalname, status: 'FAILED', note: (caught as Error).message.slice(0, 200) });
       }
     }
-    if (texts.length === 0) return { files, filled: [], different: [], measurements: [] };
+    // The files themselves are kept with the case, whether or not anything could be read from them.
+    const kept = await this.keepFiles(user, visit, uploads);
+    if (!this.ai.enabled()) return { files: files.map((f) => ({ name: f.name, status: 'NO_TEXT' as const, note: 'AI is not set up, so the file was kept but not read' })), documents: kept, filled: [], different: [], measurements: [] };
+    if (texts.length === 0) return { files, documents: kept, filled: [], different: [], measurements: [] };
 
     const questions = OBSERVATION_FIELDS.map((f) => `- ${f.key} (${f.label})${f.type === 'select' ? `: ${f.options?.join(' | ')}` : f.type === 'number' ? ` [number${f.unit ? `, ${f.unit}` : ''}]` : ''}`).join('\n');
     const result = await this.ai.json<{ observations: { key: string; value: string }[]; measurements: { label: string; areaSqm: number }[] }>({
@@ -245,7 +247,27 @@ export class InspectionsService {
       }
       await this.audit.record({ firmId: user.firmId, actorId: user.userId, entityType: 'Inspection', entityId: id, action: 'inspection.file_read' }, tx);
     });
-    return { files, filled, different, measurements: newMeasurements };
+    return { files, documents: kept, filled, different, measurements: newMeasurements };
+  }
+
+  // Stores what the inspector uploaded as the case's site inspection documents.
+  private async keepFiles(user: AuthUser, visit: { assignmentId: string; propertyId: string }, uploads: Express.Multer.File[]) {
+    const kept: { id: string; fileName: string }[] = [];
+    for (const upload of uploads) {
+      const { file, mimeType } = requireFile(upload, ['application/pdf', 'image/jpeg', 'image/png']);
+      const stored = await this.storage.save(user.firmId, file.buffer);
+      try {
+        const document = await this.prisma.document.create({
+          data: { firmId: user.firmId, propertyId: visit.propertyId, assignmentId: visit.assignmentId, type: 'SITE_INSPECTION', source: 'DASHBOARD', fileName: safeFileName(file.originalname), mimeType, sizeBytes: stored.sizeBytes, storageKey: stored.storageKey, sha256: stored.sha256, uploadedById: user.userId },
+          select: { id: true, fileName: true },
+        });
+        kept.push(document);
+      } catch (error) {
+        await this.storage.remove(stored.storageKey);
+        throw error;
+      }
+    }
+    return kept;
   }
 
   async addMeasurement(user: AuthUser, id: string, dto: AddMeasurementDto) {
