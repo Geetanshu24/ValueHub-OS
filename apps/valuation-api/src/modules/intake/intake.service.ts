@@ -5,7 +5,7 @@ import { requireFile } from '../../common/storage/file-validation.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { extractText } from '../ocr/text-extract.js';
-import { parseInstruction } from './intake-parse.js';
+import { parseDeed, parseInstruction } from './intake-parse.js';
 import type { PreviousWorkQuery } from './intake.dto.js';
 
 const MAX_FILES = 10;
@@ -20,6 +20,19 @@ export class IntakeService {
   // details. Nothing is stored: the files are uploaded again, against the
   // assignment, once a person has confirmed the details.
   async extract(firmId: string, uploads: Express.Multer.File[]) {
+    const { files, text } = await this.readFiles(uploads);
+    const banks = await this.prisma.bank.findMany({ where: { firmId }, select: { id: true, name: true } });
+    return { files, fields: text ? parseInstruction(text, banks) : {} };
+  }
+
+  // Reads a sale deed for the buyer, their father or husband, the property
+  // type, the land area and the address.
+  async extractDeed(uploads: Express.Multer.File[]) {
+    const { files, text } = await this.readFiles(uploads);
+    return { files, fields: text ? parseDeed(text) : {} };
+  }
+
+  private async readFiles(uploads: Express.Multer.File[]) {
     if (uploads.length === 0) throw new BadRequestException('Add at least one file');
     if (uploads.length > MAX_FILES) throw new BadRequestException(`At most ${MAX_FILES} files can be read at once`);
 
@@ -38,8 +51,7 @@ export class IntakeService {
       }
     }
 
-    const banks = await this.prisma.bank.findMany({ where: { firmId }, select: { id: true, name: true } });
-    return { files, fields: texts.length ? parseInstruction(texts.join('\n'), banks) : {} };
+    return { files, text: texts.join('\n') };
   }
 
   // Earlier reports on matching properties, newest first, one row per assignment.

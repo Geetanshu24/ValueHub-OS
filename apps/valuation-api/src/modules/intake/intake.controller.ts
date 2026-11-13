@@ -20,6 +20,14 @@ export class IntakeController {
   }
 
   @Roles('FIRM_ADMIN', 'VALUER')
+  @Post('extract-deed')
+  @HttpCode(200)
+  @UseInterceptors(FilesInterceptor('files', 10, { limits: { fileSize: UPLOAD_LIMITS.documentBytes } }))
+  extractDeed(@UploadedFiles() files: Express.Multer.File[] | undefined) {
+    return this.intake.extractDeed(files ?? []);
+  }
+
+  @Roles('FIRM_ADMIN', 'VALUER')
   @Get('previous-work')
   previousWork(@CurrentUser() user: AuthUser, @Query() query: PreviousWorkQuery) {
     return this.intake.previousWork(user.firmId, query);
