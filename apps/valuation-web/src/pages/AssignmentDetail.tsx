@@ -1,3 +1,4 @@
+import { CASE_STEPS } from '../components/CaseSteps.tsx'
 import Timeline from '../components/Timeline.tsx'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -204,19 +205,22 @@ export default function AssignmentDetail() {
         </Card>
       )}
 
-      <Card title="Work on this assignment">
-        <div className="flex flex-wrap gap-2">
-          <Link to={`/assignments/${id}/documents`} className={ghostButtonClass}>Property &amp; Documents</Link>
-          <Link to={`/assignments/${id}/inspection`} className={ghostButtonClass}>Site Inspection</Link>
-          <Link to={`/assignments/${id}/comparison`} className={ghostButtonClass}>Documents vs Site</Link>
-          <Link to={`/assignments/${id}/valuation`} className={ghostButtonClass}>Valuation</Link>
-          <Link to={`/assignments/${id}/workbench`} className={ghostButtonClass}>Drafter workbench</Link>
-          <Link to={`/assignments/${id}/compare`} className={ghostButtonClass}>Compare (documents vs site)</Link>
-          <Link to={`/assignments/${id}/check`} className={ghostButtonClass}>Valuer check &amp; send</Link>
-          <Link to={`/assignments/${id}/bank-report`} className={ghostButtonClass}>Bank report (Word / PDF)</Link>
-          <Link to={`/assignments/${id}/review`} className={ghostButtonClass}>Quality Review</Link>
-          <Link to={`/assignments/${id}/submission`} className={ghostButtonClass}>Approval &amp; Submission</Link>
-        </div>
+      <Card title="Work on this case">
+        <ol className="flex flex-wrap gap-2">
+          {CASE_STEPS.map((step, i) => (
+            <li key={step.path}><Link to={`/assignments/${id}/${step.path}`} className={ghostButtonClass}><span className="mr-1.5 opacity-60">{i + 1}</span>{step.label}</Link></li>
+          ))}
+        </ol>
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer text-ink-soft">More</summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link to={`/assignments/${id}/valuation`} className={ghostButtonClass}>Valuation</Link>
+            <Link to={`/assignments/${id}/workbench`} className={ghostButtonClass}>Drafter workbench</Link>
+            <Link to={`/assignments/${id}/comparison`} className={ghostButtonClass}>Documents vs Site (old view)</Link>
+            <Link to={`/assignments/${id}/review`} className={ghostButtonClass}>Quality Review</Link>
+            <Link to={`/assignments/${id}/submission`} className={ghostButtonClass}>Approval &amp; Submission</Link>
+          </div>
+        </details>
       </Card>
       <Timeline assignmentId={id} />
     </div>

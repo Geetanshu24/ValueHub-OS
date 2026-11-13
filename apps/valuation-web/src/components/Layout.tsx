@@ -8,6 +8,7 @@ import { SearchModal, StageModal, TrailModal } from './shell/Modals.tsx'
 import { ToastProvider } from './shell/Toast.tsx'
 import { useActiveCase } from './shell/useActiveCase.ts'
 import AssignmentPopup from './AssignmentPopup.tsx'
+import CaseSteps from './CaseSteps.tsx'
 import PullToRefresh from './PullToRefresh.tsx'
 import { useAuth } from '../lib/auth.tsx'
 import { useFetch } from '../lib/useFetch.ts'
@@ -214,7 +215,7 @@ export default function Layout() {
             </div>
             {current && <LifecycleBar stages={current.stages} blocked={current.counts.openDifferences > 0} onPick={setStage} />}
             <AssignmentPopup />
-            <PullToRefresh><div className="pd-page p-6"><Outlet /></div></PullToRefresh>
+            <PullToRefresh><div className="pd-page p-6"><CaseSteps /><Outlet /></div></PullToRefresh>
           </main>
         </div>
       </div>
