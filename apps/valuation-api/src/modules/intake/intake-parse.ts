@@ -157,7 +157,10 @@ export function parseDeed(text: string): DeedSuggestion {
 
   // The words that introduce the address ("residential house bearing") count too.
   const subject = address ? flat.slice(Math.max(0, address.index - 40), address.index + address[0].length) : flat;
-  const kind = CLASSES.find(([re]) => re.test(subject));
+  // With no address to judge from, a deed that calls the plot residential is not industrial because
+  // some other clause mentions a factory.
+  const residential = !address && /\bresidential\s+(?:plot|colony|house|site|building|property)/i.test(flat);
+  const kind = residential ? CLASSES.find(([, c]) => c === 'HOUSE') : CLASSES.find(([re]) => re.test(subject));
   if (kind) out.propertyClass = { value: kind[1], confidence: out.address ? 0.5 : 0.35 };
   return out;
 }

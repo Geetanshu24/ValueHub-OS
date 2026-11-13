@@ -14,6 +14,17 @@ describe('toSqm', () => {
   });
 });
 
+describe('land use', () => {
+  it('reads "DOMESTIC" on a water bill and "Residential-8 Marla" on an allotment letter as the same use', () => {
+    const g = gatherFacts([
+      { id: 'bill', fields: [field('land_use', 'DOMESTIC')] },
+      { id: 'allot', fields: [field('land_use', 'Residential-8 Marla')] },
+    ]);
+    expect(g.best.get('land_use')?.value).toBe('Residential');
+    expect(g.conflicts).toEqual([]);
+  });
+});
+
 describe('gatherFacts', () => {
   it('uses the single value when documents agree, written in any unit', () => {
     const docs: DocRow[] = [

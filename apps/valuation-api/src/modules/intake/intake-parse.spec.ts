@@ -57,6 +57,11 @@ The vendor sells the residential house bearing No. 47, Gali No. 3, Sector 15, Ro
     expect(s.locality?.value).toBe('Sector 15');
     expect(s.district?.value).toBe('North West Delhi');
   });
+  it('does not call a residential plot industrial', async () => {
+    const { parseDeed } = await import('./intake-parse.js');
+    const s = parseDeed('The Authority has allotted this residential plot to the vendee. The vendee shall not run any factory or industrial activity on it.');
+    expect(s.propertyClass?.value).toBe('HOUSE');
+  });
   it('suggests nothing from unrelated text', async () => {
     const { parseDeed } = await import('./intake-parse.js');
     expect(parseDeed('hello world')).toEqual({});

@@ -20,6 +20,16 @@ const FACTOR: Record<string, number> = { SQM: 1, SQYD: 0.83612736, SQFT: 1 / 10.
 const UNIT_LABEL: Record<string, string> = { SQM: 'sq m', SQYD: 'sq yd', SQFT: 'sq ft' };
 const isArea = (key: string) => /_sqm$/.test(key);
 
+// Land use is written differently on each paper: a water bill says "DOMESTIC", an allotment letter "Residential-8 Marla".
+// Reduced to one word, they agree and do not race each other for the report box.
+export function normalizeFact(key: string, value: string): string {
+  if (key !== 'land_use') return value;
+  if (/residential|domestic/i.test(value)) return 'Residential';
+  if (/commercial/i.test(value)) return 'Commercial';
+  if (/industrial/i.test(value)) return 'Industrial';
+  return value;
+}
+
 // An area written in sq yd or sq ft, as square metres.
 export function toSqm(value: string, unit?: string | null): string {
   const n = Number(value.replace(/,/g, ''));
@@ -47,7 +57,7 @@ export function gatherFacts(documents: DocRow[]) {
       if (field.state === 'UNKNOWN') continue;
       const raw = (reviewed ? field.verifiedValue ?? field.extractedValue : field.extractedValue).trim();
       if (!raw) continue;
-      const value = isArea(field.fieldKey) ? toSqm(raw, field.unit) : raw;
+      const value = isArea(field.fieldKey) ? toSqm(raw, field.unit) : normalizeFact(field.fieldKey, raw);
       // A person's choice beats a review, a review beats a typed value, and a typed value beats text a machine read.
       const rank = (field.useInReport ? 100 : 0) + (reviewed ? 10 : 0) + (field.source === 'MANUAL' ? 5 : 0) + Number(field.confidence ?? 0);
       if (!perDocument[field.fieldKey]) {
