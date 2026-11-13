@@ -51,6 +51,7 @@ export default function Layout() {
   const life = useFetch<Life>(caseId ? `/assignments/${caseId}/lifecycle?at=${encodeURIComponent(location.pathname)}` : null)
   const reminders = useFetch<Reminder[]>('/dashboard/reminders')
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 900)
+  const [more, setMore] = useState(false)
   const [bell, setBell] = useState(false)
   const [search, setSearch] = useState(false)
   const [stage, setStage] = useState<Stage | null>(null)
@@ -137,10 +138,17 @@ export default function Layout() {
           {/* LEFT SIDEBAR */}
           <aside className={`${collapsed ? 'w-16 [&_.sidebar-label]:hidden' : 'w-60'} z-30 flex select-none flex-col justify-between border-r border-slate-700/50 bg-brand-navy text-slate-300 shadow-md transition-all duration-300`} aria-label="Main navigation">
             <div className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
-              <Section first>Core Workflows</Section>
-              <Item to="/" end label="1. Dashboard"><LayoutDashboard className={icon} /></Item>
-              <Item to="/assignments" end label="2. Case Register"><FolderKanban className={icon} /></Item>
+                            <Item to="/" end label="Dashboard"><LayoutDashboard className={icon} /></Item>
+              <Item to="/assignments" end label="Case Register"><FolderKanban className={icon} /></Item>
 
+              <Item to={caseId ? `/rate-bank?assignment=${caseId}` : '/rate-bank'} label="Market Rate Bank"><Database className={icon} /></Item>
+              {user?.role !== 'INSPECTOR' && <Item to="/accounts" label="Accounts"><Wallet className={icon} /></Item>}
+
+              <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className={`${nav} mt-2 border border-white/10`}>
+                <ChevronRight className={`${icon} transition ${more ? 'rotate-90' : ''}`} />
+                <span className="sidebar-label truncate">{more ? 'Hide other pages' : 'More pages'}</span>
+              </button>
+              {more && <>
               <Section>{current ? `Active Case (${current.case.code})` : 'Active Case'}</Section>
               <Item to={to('documents')} label="3. Document Vault" disabled={!caseId} badge={current && <span className="rounded bg-blue-500/20 px-1.5 font-mono text-[9px] text-blue-300">{current.counts.documents}</span>}><FileCheck2 className={icon} /></Item>
 {teamWork && <>
@@ -168,16 +176,13 @@ export default function Layout() {
               <Item to={to('bank-report')} label="Bank Report (Word / PDF)" disabled={!caseId}><Files className={icon} /></Item>
 </>}
 
-              <Section>Market Intelligence</Section>
-              <Item to={caseId ? `/rate-bank?assignment=${caseId}` : '/rate-bank'} label="9. Market Rate Bank"><Database className={icon} /></Item>
-
               <Section>Records</Section>
               <Item to="/properties" label="Properties"><Building2 className={icon} /></Item>
               <Item to="/revisions" label="Bank Queries"><MessageSquareWarning className={icon} /></Item>
               <Item to="/evidence" label="Evidence Vault"><ShieldCheck className={icon} /></Item>
-              {user?.role !== 'INSPECTOR' && <Item to="/accounts" label="Accounts"><Wallet className={icon} /></Item>}
               {isAdmin && <Item to="/reports" label="Report Templates"><Landmark className={icon} /></Item>}
               {isAdmin && <Item to="/admin" label="Administration"><Settings className={icon} /></Item>}
+              </>}
             </div>
             <div className="border-t border-white/10 p-3 text-[10px] text-slate-400">
               <div className="sidebar-label flex items-center justify-between"><span>Active Case:</span><span className="font-mono font-bold text-white">{current?.case.code ?? '—'}</span></div>
